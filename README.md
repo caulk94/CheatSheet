@@ -1,2 +1,0 @@
-# CheatSheet
-Pentesting / RedTeaming CheatSheet 
