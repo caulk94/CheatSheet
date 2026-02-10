@@ -1,4 +1,5 @@
-> **Disclaimer:** This resource is for educational purposes only. Use it responsibly and only on authorized targets.
+> [!CAUTION]
+> **Disclaimer**: This repository is for educational and authorized security testing purposes only.
 
 # Offensive Security CheatSheet
 ### The Ultimate Guide for OSCP, CPTS, and eCPPT
@@ -52,4 +53,5 @@ Below is the detailed structure of the knowledge base. Use this as a roadmap dur
 ## Support
 If these notes helped you "Try Harder" and pass your exam, please consider giving a Star to this repository!
 
-> **Disclaimer:** This resource is for educational purposes only. Use it responsibly and only on authorized targets.
+> [!CAUTION]
+> **Disclaimer**: This repository is for educational and authorized security testing purposes only.
