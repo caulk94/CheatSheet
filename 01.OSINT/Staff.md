@@ -1,79 +1,96 @@
-# Staff
-```table-of-contents
-```
-## LinkedIn Enumeration
-Identify High-Value Targets (SysAdmins, Developers) and technology stacks.
-### Google Dorks (Passive)
+# People & Employee Enumeration
+## 1. LinkedIn Enumeration (Passive)
+### Google Dorks (Employees)
+**Description:** Identify key personnel (SysAdmins, DevOps) and infer technology stacks from job postings.
 ```shell
 # Find Employees
 site:linkedin.com/in/ "Target Company"
 
-# Find Specific Roles (High Value)
+# High-Value Targets (Privileged Access)
 site:linkedin.com/in/ "Target Company" "System Administrator"
 site:linkedin.com/in/ "Target Company" "DevOps"
-site:linkedin.com/in/ "Target Company" "HR"
+site:linkedin.com/in/ "Target Company" "HR" (Social Engineering Targets)
 
-# Identification of Technology Stack via Job Posts
-site:linkedin.com/jobs "Target Company"
+# Technology Stack (via Job Descriptions)
 site:linkedin.com/jobs "Target Company" "VPN"
 site:linkedin.com/jobs "Target Company" "Firewall"
+site:linkedin.com/jobs "Target Company" "Active Directory"
 ```
-### Tools
+### CrossLinked (Scraper)
+**Install:** `pip3 install crosslinked` or `git clone https://github.com/m8r0wn/CrossLinked` 
+**Docs:** [https://github.com/m8r0wn/CrossLinked](https://github.com/m8r0wn/CrossLinked)
 ```shell
-# CrossLinked (Scrapes LinkedIn via Google/Bing)
-# Generates valid email formats based on names found
+# Description: Scrapes LinkedIn data via search engines (Google/Bing) to generate valid email lists.
+# Syntax: crosslinked -f <format> -t <timeout> <company_name>
+# ⚠️ OPSEC: Passive (Hits Search Engines, not LinkedIn directly).
 python3 crosslinked.py -f '{first}.{last}@target.com' -t 5 target_name
 ```
-## GitHub Recon
+## 2. GitHub Recon (Code & Secrets)
 ### GitHub Search Dorks
+**Description:** Search for leaked secrets, keys, or internal infrastructure details within an organization's public repositories.
 ```shell
-# Find Organization
+# Find Organization Repos
 org:"TargetCompany"
 
-# Find Internal Info
+# Sensitive Information Hunting
 org:"TargetCompany" "password"
 org:"TargetCompany" "API_KEY"
+org:"TargetCompany" "internal"
+org:"TargetCompany" "AWS_ACCESS_KEY_ID"
+
+# Configuration & Key Files
 org:"TargetCompany" filename:.env
 org:"TargetCompany" filename:id_rsa
-org:"TargetCompany" "internal"
+org:"TargetCompany" filename:config
 ```
-### User Enumeration
-Check public repositories of identified employees.
-1. Identify a developer from LinkedIn.
-2. Find their GitHub profile.
-3. Check "Dotfiles" repositories (often contain aliases or paths).
-4. Check "Issues" they opened on other repos (reveals software versions they use).
-## Document Metadata (FOCA / Exiftool)
+### Developer Profiling (Manual)
+**Description:** Once a developer is identified via LinkedIn:
+1. Find their personal GitHub profile.
+2. Check **"Dotfiles"** repos (often contain aliases, paths, or local configs).
+3. Check **"Issues"** they opened on other projects (reveals software versions/stacks they use).
+## 3. Document Metadata Analysis
+### Metadata Extraction (Manual)
+**Description:** extract metadata (Author, Software Version, Paths) from public documents. 
+**Tools:** `wget` (download), `exiftool` (analyze).
 ```shell
-# 1. Download public documents (PDF, DOC, DOCX, XLS, PPT)
+# 1. Download public documents (Recursive, specific extensions)
+# ⚠️ OPSEC: Moderate Noise. Looks like a crawler.
 wget -r -l1 -A pdf,doc,docx,xls,pptx -P docs/ https://www.target.com
 
-# 2. Extract Metadata (Look for 'Author' or 'Creator')
-# This often reveals the naming convention (e.g., 'jsmith' or 'john.smith')
+# 2. Extract Usernames & Software Info
+# Look for "Author", "Creator", or "Producer" to find username patterns (e.g., jsmith vs john.smith)
 exiftool docs/* | grep -E "Author|Creator|Producer"
-
-# 3. Automated Tool (Metagoofil)
+```
+### Metagoofil (Automated)
+**Install:** `sudo apt install metagoofil` 
+**Docs:** [https://github.com/laramies/metagoofil](https://github.com/laramies/metagoofil)
+```shell
+# Description: Automates searching, downloading, and extracting metadata from public documents.
+# Syntax: metagoofil -d <domain> -t <filetypes> -l <limit> -n <downloads> -o <output_dir>
+# ⚠️ OPSEC: Moderate Noise.
 metagoofil -d target.com -t pdf,doc,xls -l 20 -n 10 -o docs/ -f results.html
 ```
-## Email Pattern & Credential Discovery
-### Email Format Discovery
-Use services like Hunter.io or Phonebook.cz to find the pattern.
-- `{first}.{last}@target.com` (Most common)
-- `{f}{last}@target.com`
-- `{first}{l}@target.com`
-### Breach Data Search_
+## 4. Credential & Username Discovery
+### Email Pattern Discovery
+**Tools:** [Hunter.io](https://hunter.io), [Phonebook.cz](https://phonebook.cz) 
+**Goal:** Determine the standard email format to generate wordlists.
+- `{first}.{last}@target.com` (Standard)
+- `{f}{last}@target.com` (Common in older AD environments)
+### Username List Generation (Bash)
+**Description:** Generate custom username lists from a list of full names (`names.txt`).
 ```shell
-# H8mail (Check local breach or APIs)
-h8mail -t target@target.com
+# Format: john.smith
+awk '{print tolower($1)"."tolower($2)}' names.txt > users_dot.txt
 
-# Manual Check
-# https://haveibeenpwned.com/
-# https://dehashed.com/
+# Format: jsmith
+awk '{print tolower(substr($1,1,1))tolower($2)}' names.txt > users_fi.txt
 ```
-### Username List Generation
+### Breach Data Search
+**Tools:** [HaveIBeenPwned](https://haveibeenpwned.com), [DeHashed](https://dehashed.com)
 ```shell
-# Using strict format (requires 'names.txt' list of Full Names)
-# names.txt content: John Smith
-awk '{print tolower($1)"."tolower($2)}' names.txt > users_dot.txt    # john.smith
-awk '{print tolower(substr($1,1,1))tolower($2)}' names.txt > users_fi.txt # jsmith
+# H8mail (Automated Breach Check)
+# Install: pip3 install h8mail
+# Syntax: h8mail -t <target_email>
+# ⚠️ OPSEC: Passive (Queries APIs/Local DBs).
+h8mail -t target@target.com
 ```

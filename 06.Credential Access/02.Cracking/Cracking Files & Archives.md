@@ -1,87 +1,112 @@
 # Cracking Files & Archives
-```table-of-contents
-```
-## Hunting for Encoded Files
+**Concept:** You have found sensitive files (SSH keys, ZIPs, DOCX), but they are encrypted. 
+**Goal:** Extract the "hash" (metadata representing the password) from the file and use offline tools (John the Ripper / Hashcat) to crack it.
+## 1. Hunting for Encoded Files
+**Goal:** Locate potential high-value targets amidst the noise of the filesystem.
 ```shell
-# Search for spreadsheets, documents, PDFs, and presentations
-for ext in $(echo ".xls .xls* .xltx .csv .od* .doc .doc* .pdf .pot .pot* .pp*");do echo -e "\nFile extension: " $ext; find / -name *$ext 2>/dev/null | grep -v "lib\|fonts\|share\|core" ;done
+# Search for Documents & Spreadsheets
+# 2>/dev/null: Hide permission errors
+# grep -v: Exclude system directories (libraries, fonts)
+for ext in $(echo ".xls .xlsx .csv .doc .docx .pdf .zip .rar .kdbx"); do 
+    echo -e "\n[+] Searching for: $ext"
+    find / -name "*$ext" 2>/dev/null | grep -v "lib\|fonts\|share\|core\|bin"
+done
 ```
-### SSH Keys
+### Inspecting SSH Keys
+**Context:** An SSH key starting with `-----BEGIN RSA PRIVATE KEY-----` is great, but if it has a passphrase, you can't use it yet.
 ```shell
-# Find Private Keys
-grep -rnw "PRIVATE KEY" /home/* 2>/dev/null | grep ":1"
+# Check for encryption header
+head -n 4 /home/user/.ssh/id_rsa
 
-# Check header for encryption
-cat /home/user/.ssh/id_rsa
-# Output example: DEK-Info: AES-128-CBC... (Requires cracking)
+# Look for: "Proc-Type: 4,ENCRYPTED" or "DEK-Info: AES-128-CBC"
+# If present, you must crack the passphrase.
 ```
-## Hash Extraction (The *2John Suite*)
-**Locate available scripts:**
+## 2. Hash Extraction (The 2John Suite)
+**Concept:** John the Ripper (JtR) cannot crack a `.docx` file directly. It needs a specific text format containing the hash/salt. **Tools:** Kali Linux includes a suite of python scripts (`*2john`) to convert files.
+
+**Locate the converters:**
 ```shell
+# Find where the scripts are stored
 locate *2john*
+# Common path: /usr/share/john/
 ```
-### SSH Keys
+### SSH Keys (`ssh2john`)
 ```shell
-# Extract hash
-python3 /usr/share/john/ssh2john.py SSH.private > ssh.hash
+# 1. Convert Key to Hash
+python3 /usr/share/john/ssh2john.py id_rsa > ssh.hash
 
-# Crack
-john --wordlist=rockyou.txt ssh.hash
+# 2. Crack (John)
+john --wordlist=/usr/share/wordlists/rockyou.txt ssh.hash
 ```
-### Office Documents (Word/Excel/PowerPoint)
+### Office Documents (`office2john`)
+**Targets:** Word, Excel, PowerPoint.
 ```shell
-# Extract hash
-python3 /usr/share/john/office2john.py Protected.docx > doc.hash
+# 1. Convert Doc to Hash
+python3 /usr/share/john/office2john.py Passwords.docx > doc.hash
 
-# Crack
+# 2. Crack (John)
 john --wordlist=rockyou.txt doc.hash
 ```
-### PDF Documents
+### PDF Documents (`pdf2john`)
+**Note:** Some PDFs use older 40-bit encryption (trivial) while others use AES-256 (hard).
 ```shell
-# Extract hash
-python3 /usr/share/john/pdf2john.py Protected.pdf > pdf.hash
+# 1. Convert PDF to Hash
+python3 /usr/share/john/pdf2john.py Contract.pdf > pdf.hash
 
-# Crack
+# 2. Crack (John)
 john --wordlist=rockyou.txt pdf.hash
 ```
-### ZIP Archives
+### ZIP / RAR Archives (`zip2john`)
 ```shell
-# Extract hash
-zip2john Archive.zip > zip.hash
+# 1. Convert Archive to Hash
+zip2john Backup.zip > zip.hash
+rar2john Backup.rar > rar.hash
 
-# Crack
+# 2. Crack (John)
 john --wordlist=rockyou.txt zip.hash
 ```
-## BitLocker Volumes
-**Step 1: Extract Hash**
-```shell
-# Extract hashes from the VHD or image file
-bitlocker2john -i Backup.vhd > backup.hashes
+## 3. BitLocker Volumes (Windows Forensics)
+**Context:** You have a full disk image (`.vhd`, `.dd`) or a backup file of a BitLocker drive. 
+**Goal:** Extract the Recovery Key or User Password.
 
-# Filter for the User Password hash (usually $bitlocker$0)
-grep "bitlocker\$0" backup.hashes > target.hash
+**Step 1: Extract Hash (John)**
+```shell
+# Extract recovery hashes from the image
+bitlocker2john -i Backup.vhd > bitlocker.hashes
+
+# Filter for the User Password hash
+# $bitlocker$0 is usually the user password
+# $bitlocker$1 is usually the recovery key
+grep "bitlocker\$0" bitlocker.hashes > target.hash
 ```
 
-**Step 2: Crack with Hashcat** Use Mode **22100** for BitLocker.
+**Step 2: Crack (Hashcat)** **Mode:** `22100` (BitLocker)
 ```shell
-# Syntax: hashcat -m 22100 <hash_file> <wordlist>
-hashcat -m 22100 target.hash rockyou.txt -o cracked.txt
+# Crack using GPU
+hashcat -m 22100 -a 0 target.hash rockyou.txt -o cracked.txt
 ```
-## OpenSSL Encrypted Archives
+## 4. OpenSSL Encrypted Archives (Manual Scripting)
+**Context:** You find a file like `backup.tar.gz.enc`. Running `file` reveals it was encrypted with OpenSSL. 
+**Challenge:** There is no standard "header" to extract a hash from. You must try to _decrypt_ it with every password in your list.
+
 **Identification:**
 ```shell
-file Archive.gzip
+file backup.enc
 # Output: openssl enc'd data with salted password
 ```
 
-**Brute Force Loop:** This loop iterates through a wordlist, attempting to decrypt the file. If `tar` succeeds (exit code 0), the password is correct.
-```sh
-for i in $(cat rockyou.txt); do 
-    openssl enc -aes-256-cbc -d -in Archive.gzip -k $i 2>/dev/null | tar xz
-    
-    # Check if a file was successfully extracted
+**The Brute Force Loop (Bash):**
+```shell
+# Try every password in rockyou.txt
+for pass in $(cat rockyou.txt); do 
+    # Try to decrypt (-d) using AES-256-CBC (Common default)
+    # -k: Password
+    # | tar xz: Pipe to tar to verify if it extracts correctly
+    openssl enc -aes-256-cbc -d -in backup.enc -k $pass 2>/dev/null | tar xz
+
+    # Check exit code ($?) of the pipe
     if [ $? -eq 0 ]; then
-        echo "Success! Password is: $i"
+        echo "[+] Success! Password is: $pass"
         break
     fi
 done

@@ -1,53 +1,84 @@
-# Google Dorks
-```table-of-contents
+# Google Hacking (Dorks)
+## 1. Operator Quick Reference
+**Description:** Essential operators for constructing custom queries. 
+**Syntax:** `operator:value`
+```shell
+site:target.com        # Limit to domain
+filetype:pdf           # specific extension (or ext:pdf)
+inurl:admin            # "admin" is in the URL
+intitle:"index of"     # "index of" is in the page title
+intext:"password"      # "password" is in the body text
+cache:target.com       # View Google's cached version
+-www                   # Exclude results (e.g., exclude main site)
 ```
-## Theory: Search Operators
-| **Operator**      | **Description**                             | **Example**                | **Use Case**                                        |
-| ------------- | --------------------------------------- | ---------------------- | ----------------------------------------------- |
-| `site:`       | Limit results to a specific domain.     | `site:target.com`      | Find all indexed pages of the target.           |
-| `inurl:`      | Search for terms inside the URL.        | `inurl:login`          | Find login pages or admin panels.               |
-| `filetype:`   | Search for specific file extensions.    | `filetype:pdf`         | Find leaked documents, logs, or backups.        |
-| `intitle:`    | Search for terms inside the page title. | `intitle:"index of"`   | Find open directory listings.                   |
-| `intext:`     | Search for terms inside the body text.  | `intext:"password"`    | Find pages leaking credentials.                 |
-| `cache:`      | Show Google's cached version of a page. | `cache:target.com`     | View content even if the site is down.          |
-| `link:`       | Find pages linking to a specific URL.   | `link:target.com`      | Analyze backlinks.                              |
-| `related:`    | Find sites similar to the target.       | `related:target.com`   | Discover competitors or related infrastructure. |
-| `ext:`        | Same as filetype (Extension).           | `ext:log`              | Find log files exposed online.                  |
-| `allintext:`  | Page must contain ALL terms in body.    | `allintext:admin pass` | Specific targeted search.                       |
-| `exclude (-)` | Remove results containing a term.       | `site:target.com -www` | Find subdomains excluding the main www site.    |
-## Useful Dorks for Pentesters
-### Directory Listings
-```http
+## 2. High-Value Dorks (Manual)
+**⚠️ OPSEC:** Passive. Interaction is with Google, not the target. However, excessive rapid queries will trigger Google CAPTCHAs.
+### Exposed Directories & Infrastructure
+**Description:** Findings open directory listings (Directory Traversal) and cloud buckets.
+```shell
+# Directory Listings (Index of /)
 site:target.com intitle:"index of"
 site:target.com intitle:"index of" "parent directory"
+
+# Cloud Storage (S3 Buckets)
+site:s3.amazonaws.com "target"
+site:blob.core.windows.net "target"
 ```
-### Configuration Files
-```http
+### Sensitive Configuration & Environment Files
+**Description:** Hunting for leaked config files, logs, and environment variables.
+```shell
+# Configuration Files (extensions)
 site:target.com ext:xml | ext:conf | ext:cnf | ext:reg | ext:inf | ext:rdp | ext:cfg | ext:txt | ext:ini
+
+# Environment Files (Credentials)
+site:target.com filetype:env
 site:target.com filetype:env "DB_PASSWORD"
-```
-### Log Files
-```http
+
+# Log Files
 site:target.com ext:log
 site:target.com inurl:log
 ```
-### Database Files
-```http
+### Database & Backup Files
+**Description:** Locating accidental database dumps or SQL files.
+```shell
 site:target.com ext:sql | ext:dbf | ext:mdb
 site:target.com "dump" "sql"
+site:target.com "backup"
 ```
-### Login Portals
-```http
+### Admin Portals & Login Interfaces
+**Description:** Identifying administrative entry points.
+```shell
 site:target.com inurl:admin
 site:target.com inurl:login
 site:target.com intitle:"login"
 site:target.com inurl:portal
+site:target.com inurl:vpn
 ```
-### Cloud Storage (S3 Buckets)
-```http
-site:s3.amazonaws.com "target"
+## 3. Automated Dorking Tools
+### Pagodo (Passive Google Dork)
+**Install:** `git clone https://github.com/opsdisk/pagodo.git && pip3 install -r requirements.txt` 
+**Docs:** [https://github.com/opsdisk/pagodo](https://github.com/opsdisk/pagodo)
+```shell
+# Description: Automates searching using the Google Hacking Database (GHDB).
+# Syntax: python3 pagodo.py -d <domain> -g <dork_file>
+# ⚠️ OPSEC: High Noise (to Google). Will trigger CAPTCHA/Bans quickly. Use proxies.
+python3 pagodo.py -d target.com -g dorks.txt -s -e 15.0 -l 50
 ```
-## Automated Tools
-- **Google Hacking Database (GHDB):** [https://www.exploit-db.com/google-hacking-database](https://www.exploit-db.com/google-hacking-database)
-- **Pagodo:** Automates Google Dorking using GHDB.
-- **Katana:** A modern crawler/dorking tool.
+### Katana (Crawler & Dorking)
+**Install:** `go install github.com/projectdiscovery/katana/cmd/katana@latest` 
+**Docs:** [https://github.com/projectdiscovery/katana](https://github.com/projectdiscovery/katana)
+```shell
+# Description: Next-gen crawling and spidering framework. Can find hidden endpoints.
+# Syntax: katana -u <url> -d <depth>
+# ⚠️ OPSEC: Active/High Noise. Hits the target directly.
+katana -u https://target.com -d 5 -jc -kf -o katana_output.txt
+```
+### Go-Dork (CLI Dorker)
+**Install:** `go install github.com/dwisiswant0/go-dork@latest` 
+**Docs:** [https://github.com/dwisiswant0/go-dork](https://github.com/dwisiswant0/go-dork)
+```shell
+# Description: Simple CLI tool to query Google without a browser.
+# Syntax: go-dork -q <query>
+# ⚠️ OPSEC: Passive (hits Google).
+go-dork -q "site:target.com ext:php"
+```

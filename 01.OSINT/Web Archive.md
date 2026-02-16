@@ -1,42 +1,64 @@
-# Web Archive
-```table-of-contents
-```
-## Online Resources
-| **Service**                 | **URL**                            | **Description**                                                   |
-| ----------------------- | ------------------------------ | ------------------------------------------------------------- |
-| **Wayback Machine**     | `https://archive.org/web/`     | The largest archive. Browse by date changes.                  |
-| **Archive.today**       | `https://archive.ph/`          | Alternative snapshot tool, often bypasses paywalls or blocks. |
-| **Library of Congress** | `http://loc.gov/webarchiving/` | Focused on government/official sites.                         |
-## Automated Tools (CLI)
-### waybackurls
+# Web History & Archives
+## 1. Online Archives (Manual)
+**Goal:** Find deleted pages, old versions of files, or bypass current WAFs/Paywalls.
+
+| **Service**             | **URL**                       | **Description**                                              |
+| ----------------------- | ----------------------------- | ------------------------------------------------------------ |
+| Wayback Machine     | `https://web.archive.org`     | The largest archive. Browse site changes over time.          |
+| Archive.today       | `https://archive.ph`          | Often captures snapshots that bypass modern blocks/paywalls. |
+| Library of Congress | `http://loc.gov/webarchiving` | Good for government/official domain history.                 |
+## 2. Automated Archiving Tools (CLI)
+### Waybackurls
+**Install:** `go install github.com/tomnomnom/waybackurls@latest` 
+**Docs:** [https://github.com/tomnomnom/waybackurls](https://github.com/tomnomnom/waybackurls)
 ```shell
+# Description: Fetch all URLs that the Wayback Machine knows about for a domain.
+# Syntax: echo <domain> | waybackurls
+# ⚠️ OPSEC: Passive (Queries Archive.org, not the target).
+
 # Basic Usage
-echo "target.com" | waybackurls > urls.txt
+echo "target.com" | waybackurls > urls_wayback.txt
 
-# Filter for specific files (e.g., JSON or TXT)
-echo "target.com" | waybackurls | grep -E "\.json|\.txt|\.php"
+# Filter for Specific Extensions (Config, Backup, Logs)
+echo "target.com" | waybackurls | grep -E "\.json|\.txt|\.php|\.bak|\.old|\.zip"
 ```
-### gau (GetAllUrls)
+### GAU (GetAllUrls)
+**Install:** `go install github.com/lc/gau/v2/cmd/gau@latest` 
+**Docs:** [https://github.com/lc/gau](https://github.com/lc/gau)
 ```shell
-# Get URLs
-gau target.com > gau_urls.txt
+# Description: Fetches URLs from AlienVault's OTX, the Wayback Machine, and Common Crawl.
+# Syntax: gau <domain>
+# ⚠️ OPSEC: Passive.
 
-# Get URLs and filter for parameters (potential XSS/SQLi)
-gau target.com | grep "=" | sort -u > params.txt
+# Get All URLs
+gau target.com > urls_gau.txt
+
+# Find Parameters (Potential XSS/SQLi targets)
+gau target.com | grep "=" | sort -u > urls_params.txt
 ```
-### waybackrobots
+### Waybackrobots
+**Install:** `go install github.com/mhmdiaa/waybackrobots@latest` 
+**Docs:** [https://github.com/mhmdiaa/waybackrobots](https://github.com/mhmdiaa/waybackrobots)
 ```shell
-# Usage
+# Description: Extracts 'Disallow' paths from old robots.txt files to find hidden directories.
+# Syntax: waybackrobots <domain>
+# ⚠️ OPSEC: Passive.
 waybackrobots target.com
 ```
-## Useful One-Liners
+## 3. Historical Data Analysis (One-Liners)
+### API Key Hunting (JS Files)
+**Description:** Download old JavaScript files found in archives and grep for secrets.
 ```shell
-# 1. Find potential API keys in old JS files
-echo "target.com" | waybackurls | grep "\.js$" | xargs -n1 -I{} curl -s {} | grep -iE "key|token|secret"
-
-# 2. Find interesting parameters for fuzzing
+# ⚠️ OPSEC: Active (curl hits the archived URL, but sometimes redirects to live site if archive is missing).
+echo "target.com" | waybackurls | grep "\.js$" | sort -u | xargs -n1 -I{} curl -s "{}" | grep -iE "key|token|secret|password|auth"
+```
+### Parameter Discovery (Fuzzing Prep)
+**Description:** Extract unique parameter names for fuzzing (e.g., `?id=`, `?user=`).
+```shell
 gau target.com | grep "?" | cut -d "?" -f 2 | cut -d "=" -f 1 | sort -u > param_names.txt
-
-# 3. Find backup files
-echo "target.com" | waybackurls | grep -E "\.bak|\.old|\.zip|\.sql"
+```
+### Backup & Sensitive File Discovery
+**Description:** Quickly isolate interesting file extensions from the noise.
+```shell
+echo "target.com" | waybackurls | grep -iE "\.bak|\.old|\.zip|\.sql|\.db|\.env"
 ```

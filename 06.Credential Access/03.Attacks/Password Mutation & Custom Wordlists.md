@@ -1,58 +1,64 @@
 # Password Mutation & Custom Wordlists
-```table-of-contents
-```
-## Credential Stuffing
-[DefaultCreds-Cheat-Sheet](https://github.com/ihebski/DefaultCreds-cheat-sheet)
-## Rule-Based Mutation with Hashcat
-### Common Rule Syntax
-[Hashcat Wiki](https://hashcat.net/wiki/doku.php?id=rule_based_attack)
-
-| **Function** | **Description**                                 | **Example Input**    | **Example Output** |
-| -------- | ------------------------------------------- | ---------------- | -------------- |
-| `:`      | Do nothing                                  | password         | password       |
-| `l`      | Lowercase all letters                       | Password         | password       |
-| `u`      | Uppercase all letters                       | password         | PASSWORD       |
-| `c`      | Capitalize first letter, lowercase the rest | password         | Password       |
-| `sXY`    | Substitute all instances of X with Y        | password (`sa@`) | p@ssword       |
-| `$!`     | Append an exclamation mark                  | password         | password!      |
-### Creating a Custom Rule File
-```python title:custom.rule
-:           # Original word
-c           # Capitalize
-so0         # Substitute 'o' with '0'
-c so0       # Capitalize AND Substitute 'o' with '0'
-sa@         # Substitute 'a' with '@'
-$!          # Append '!'
-$! c        # Append '!' AND Capitalize
-```
-### Generating the List
+**Concept:** People are predictable. They capitalize the first letter, replace 'a' with '@', and append the current year. 
+**Goal:** Instead of bruteforcing every character (which takes centuries), we generate a **Targeted Wordlist** based on the company's website, and then **Mutate** it using standard rules.
+## 1. Targeted Wordlist Generation (CeWL)
+**Tool:** `CeWL` (Custom Word List generator). 
+**Role:** Spiders a target URL and scrapes every word to create a custom dictionary. This captures specific jargon, project names, and employee names that `rockyou.txt` will miss.
 ```shell
-# Syntax: hashcat --force <input_list> -r <rule_file> --stdout | sort -u > <output_list>
+# Basic Usage
+cewl https://www.inlanefreight.com -w wordlist.txt
 
-caulk@htb[/htb]$ hashcat --force password.list -r custom.rule --stdout | sort -u > mut_password.list
+# Advanced Usage
+# -d 4: Depth (How many links deep to crawl)
+# -m 6: Min word length (Ignore "the", "and", etc.)
+# --lowercase: Normalize everything to lowercase
+cewl https://www.inlanefreight.com -d 4 -m 6 --lowercase -w inlane_base.txt
 ```
-### Using Standard Rules
-Hashcat comes with optimized rule files located in `/usr/share/hashcat/rules/`.
-- **`best64.rule`**: Highly recommended for quick wins. It contains the 64 most common password mutations.
-- **`rockyou-30000.rule`**: A comprehensive set derived from the RockYou breach.
+## 2. Rule-Based Mutation (Hashcat)
+**Concept:** Hashcat has a "rule engine" that can take a list of words (like `inlane_base.txt` or `rockyou.txt`) and modify them on the fly.
+### Common Rule Syntax
+Rules are simple commands that tell Hashcat how to manipulate the string.
+
+| **Function** | **Code** | **Input**        | **Output** |
+| ------------ | -------- | ---------------- | ---------- |
+| *Nothing*    | `:`      | password         | password   |
+| *Lowercase*  | `l`      | Password         | password   |
+| *Uppercase*  | `u`      | password         | PASSWORD   |
+| *Capitalize* | `c`      | password         | Password   |
+| *Append*     | `$`      | password (`$!`)  | password!  |
+| *Prepend*    | `^`      | password (`^!`)  | !password  |
+| *Substitute* | `s`      | password (`sa@`) | p@ssword   |
+| *Reverse*    | `r`      | password         | drowssap   |
+### Using Standard Rules (The Easy Way)
+Kali Linux comes with optimized rule files in `/usr/share/hashcat/rules/`.
+- **`best64.rule`**: The 64 most common mutations. **Start here.**
+- **`rockyou-30000.rule`**: Comprehensive.
+- **`OneRuleToRuleThemAll.rule`**: Extremely thorough (takes longer).
+
 ```shell
 # List available rules
 ls /usr/share/hashcat/rules/
 ```
-## Targeted Wordlist Generation (CeWL)
-### CeWL Usage
-```shell
-# Basic Usage
-cewl <url> -w <output_file>
+## 3. Creating Custom Rules
+**Scenario:** You notice the company uses the year `2023` in many passwords. You want to create a specific rule to append `2023` to every word.
 
-# Advanced Example
-# -d 4: Depth of spidering (4 links deep)
-# -m 6: Minimum word length (6 characters)
-# --lowercase: Convert found words to lowercase
-# -w: Output file
-caulk@htb[/htb]$ cewl https://www.inlanefreight.com -d 4 -m 6 --lowercase -w inlane.wordlist
+**Create the File (`custom.rule`):**
+```shell
+:           # 1. Do nothing (Keep original)
+c           # 2. Capitalize first letter
+$2 $0 $2 $3 # 3. Append '2023'
+c $2 $0 $2 $3 # 4. Capitalize AND Append '2023'
+sa@         # 5. Swap 'a' for '@'
 ```
-### Workflow Integration
-1. **Spider** the target site with `CeWL` to create `base.list`.
-2. **Mutate** `base.list` using `Hashcat` with `best64.rule`.
-3. **Crack** using the resulting `mutated.list`.
+## 4. Generating the Mutated List
+**Workflow:**
+1. **Input:** Your base wordlist (`inlane_base.txt`).
+2. **Action:** Apply rules (`custom.rule` or `best64.rule`).
+3. **Output:** Save to a new file (`mutated.txt`) to use with other tools (like Hydra or John).
+
+```shell
+# Syntax: hashcat --force <INPUT> -r <RULES> --stdout | sort -u > <OUTPUT>
+
+# Example: Applying best64 to our CeWL list
+hashcat --force inlane_base.txt -r /usr/share/hashcat/rules/best64.rule --stdout | sort -u > inlane_mutated.txt
+```

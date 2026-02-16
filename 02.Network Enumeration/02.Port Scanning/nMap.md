@@ -1,127 +1,136 @@
-# nMap
-```table-of-contents
-```
-## The Golden Standards
+# Nmap
+**Install:** `sudo apt install nmap` 
+**Docs:** [https://nmap.org/book/man.html](https://nmap.org/book/man.html)
+## 1. The "Golden Standard" Workflow
+_Follow this sequence to balance speed and accuracy._
+### 1. Insane Speed (CTF / Lab / Internal)
+**Description:** Extreme speed. Forces 5000 packets/sec. Only use on stable networks (LAN/VPN) where you don't care about detection. 
+**Syntax:** `nmap -p- --min-rate=5000 -n -Pn <IP>`
 ```shell
-# 1. Fast TCP Scan (All Ports)
-# Finds open ports quickly using high rates.
-sudo nmap -p- --min-rate=1000 -T4 -v <IP>
-
-# 2. Comprehensive Scan (Specific Ports)
-# Run this ON the ports found in step 1.
-# -sC: Default scripts | -sV: Versions | -A: Aggressive (OS+Traceroute)
-sudo nmap -p <PORTS> -sC -sV -A <IP> -oA full_scan
-
-# 3. UDP Quick Scan (Top 100)
-# UDP is slow, so stick to top ports unless you have a specific reason.
-sudo nmap -sU --top-ports 100 -v <IP>
+# ⚠️ OPSEC: Critical Noise. Will trigger every IDS. High risk of packet loss on weak networks.
+# -n: No DNS resolution (speed) | -Pn: Skip ping (assume alive)
+sudo nmap -p- --min-rate=5000 -n -Pn -vv 10.129.2.15 -oN rapid_scan.txt
 ```
-## Live Host Discovery (Ping Sweeps)
+### 2. Aggressive / Standard (Pentest Best Practice)
+**Description:** The "Sweet Spot". Fast enough (1-2 mins for 65k ports) but reliable. Standard for commercial penetration testing. 
+**Syntax:** `nmap -p- --min-rate=1000 -T4 <IP>`
 ```shell
-# Ping Sweep (No Port Scan) - Local Network (ARP)
+# ⚠️ OPSEC: High Noise. Detected by modern SOCs, but generally accepted in white-box tests.
+sudo nmap -p- --min-rate=1000 -T4 -vv 10.129.2.15 -oA full_scan
+```
+### 3. Polite / Slow (Legacy Systems)
+**Description:** Use when the target is fragile (OT/IoT devices, old Windows servers) and might crash under high load. 
+**Syntax:** `nmap -p- -T2 <IP>`
+```shell
+# ⚠️ OPSEC: Moderate Noise. Reduces risk of DoS, but scan will take HOURS.
+# T2: 0.4 seconds wait between probes.
+sudo nmap -p- -T2 -v 10.129.2.15 -oN safe_scan.txt
+```
+### 4. Stealth & Evasion (Red Team / IDS Bypass)
+**Description:** Attempts to hide the scan origin or blend in. Uses fragmentation and decoys. 
+**Syntax:** `nmap -sS -T2 -f -D RND:5 <IP>`
+```shell
+# ⚠️ OPSEC: Low/Moderate Noise. Harder to attribute, but patterns may still be flagged.
+# -f: Fragment packets (bypass simple packet filters)
+# -D RND:10: Use 10 random IP addresses as decoys (hide your real IP)
+# --source-port 53: Mimic DNS traffic (often allowed through firewalls)
+sudo nmap -sS -p 80,443,445,3389 -T2 -f -D RND:10 --source-port 53 10.129.2.15 -oN stealth_scan.txt
+```
+### 5. UDP Quick Check (The "Forgotten" Ports)
+**Description:** UDP is slow and stateless. Do NOT scan all UDP ports unless necessary. Scan the top 1000 most common. 
+**Syntax:** `nmap -sU --top-ports 1000 <IP>`
+```shell
+# ⚠️ OPSEC: Moderate Noise. Very slow.
+sudo nmap -sU --top-ports 200 -v 10.129.2.15 -oN udp_top200.txt
+```
+## 2. Live Host Discovery (Ping Sweeps)
+_Identify active hosts before scanning ports._
+```shell
+# Local Network (ARP) - Best for internal
 sudo nmap -sn 192.168.1.0/24
 
-# Ping Sweep - disable ARP (if VPN/External)
+# External/VPN (ICMP Echo + TCP ACK)
+# --disable-arp-ping forces ICMP usage even on local LANs
 sudo nmap -sn 10.10.10.0/24 --disable-arp-ping
 
-# No Ping (Treat all hosts as online)
-# USE THIS if the host blocks ICMP/Ping probes!
-sudo nmap -Pn -n <IP>
+# Assume Online (No Ping)
+# CRITICAL: Use this if the host blocks ICMP/Ping but has open ports.
+sudo nmap -Pn -n 10.129.2.15
 ```
-### Utility One-Liners (Extracting IPs)
+
+**One-Liner: Extract Alive IPs**
 ```shell
-# Scan network and extract only alive IPs to a file
+# Scans subnet and saves only the IPs that responded to a file.
 sudo nmap 10.129.2.0/24 -sn -oG - | awk '/Up$/{print $2}' > alive_hosts.txt
 ```
-## Port Scanning Techniques
+## 3. Scan Techniques
 ### TCP Scanning
 ```shell
-# SYN Scan (Stealthy, requires sudo, Default)
-sudo nmap -sS <IP>
+# SYN Scan (Stealthy, Default) - Requires Sudo
+# Sends SYN -> Receives SYN-ACK -> Sends RST. No full connection.
+sudo nmap -sS 10.129.2.15
 
-# Connect Scan (No sudo, Noisy, completes 3-way handshake)
-nmap -sT <IP>
-
-# Scan Specific Ports
-nmap -p 80,443,8080 <IP>
-
-# Scan Port Ranges
-nmap -p 1-65535 <IP>
+# Connect Scan (Noisy) - No Sudo
+# Completes the full 3-way handshake. Logs heavily on the target.
+nmap -sT 10.129.2.15
 ```
-### UDP Scanning
+### Service & Version Detection
 ```shell
-# Top 1000 UDP ports
-sudo nmap -sU --top-ports 1000 <IP>
+# Version Detection (Standard)
+nmap -sV 10.129.2.15
 
-# Specific UDP port (e.g., SNMP or TFTP)
-sudo nmap -sU -p 161,69 <IP>
+# Version Intensity (0-9)
+# 9 tries every probe. 0 tries only the most likely.
+nmap -sV --version-intensity 5 10.129.2.15
 ```
-## Service & Script Enumeration (NSE)
-### Service Detection
+## 4. Nmap Scripting Engine (NSE)
+_Located in `/usr/share/nmap/scripts/`_
 ```shell
-# Detect Versions on Open Ports
-nmap -sV <IP>
+# Default Scripts (Safe, valuable recon)
+nmap -sC 10.129.2.15
 
-# Set Version Intensity (0-9)
-nmap -sV --version-intensity 5 <IP>
+# Vulnerability Scanning (Vulners/Vuln category)
+# ⚠️ OPSEC: Very High Noise. Can crash unstable services.
+nmap --script vuln 10.129.2.15
+
+# Targeted Script (e.g., SMB Enumeration)
+nmap --script smb-os-discovery 10.129.2.15
+
+# Script Arguments
+nmap --script http-title --script-args http.useragent="Mozilla 5" 10.129.2.15
 ```
-### Nmap Scripting Engine (NSE)
+## 5. Firewall Evasion & Timing
+### Evasion Techniques
 ```shell
-# Default Scripts (Safe and useful)
-nmap -sC <IP>
-
-# Vulnerability Scan (Run vulners/vuln category)
-nmap --script vuln <IP>
-
-# Specific Script (e.g., SMB)
-nmap --script smb-os-discovery <IP>
-
-# Pass Arguments to Script
-nmap --script http-title --script-args http.useragent="Mozilla 5" <IP>
-```
-## Performance & Timing
-```shell
-# Timing Templates (T0=Paranoid ... T5=Insane)
-# T4 is the standard for CTFs. T2 is for stealth.
-nmap -T4 <IP>
-
-# Min Rate (Force packet speed - Dangerous but fast)
-nmap --min-rate 1000 <IP>
-
-# Give up on slow hosts
-nmap --host-timeout 30m <IP>
-```
-## Evasion & Firewalls
-```shell
-# Fragment Packets (Bypass simple packet filters)
-sudo nmap -f <IP>
+# Fragment Packets (Bypass simple packet inspection)
+sudo nmap -f 10.129.2.15
 
 # Decoys (Hide your IP among fakes)
-sudo nmap -D RND:5 <IP>
+# RND:5 generates 5 random IP addresses as decoys.
+sudo nmap -D RND:5 10.129.2.15
 
 # Source Port Manipulation
-# (Some firewalls allow traffic if it comes from port 53 or 88)
-sudo nmap --source-port 53 <IP>
-
-# Mac Address Spoofing
-sudo nmap --spoof-mac Cisco <IP>
+# Mimic traffic from DNS (53) or Kerberos (88) to bypass strict firewalls.
+sudo nmap --source-port 53 10.129.2.15
 ```
-## Output Formats
+### Performance Tuning
+```shell
+# Timing Templates
+# T0 (Paranoid) ... T3 (Normal) ... T4 (Aggressive/CTF) ... T5 (Insane)
+nmap -T4 10.129.2.15
+
+# Min Rate (Force packet speed)
+# Dangerous: Can cause packet loss if the network is weak.
+nmap --min-rate 1000 10.129.2.15
+```
+## 6. Output & Debugging
 ```shell
 # Save in All Formats (Normal, Grepable, XML) - RECOMMENDED
-nmap -oA <basename> <IP>
+nmap -oA scan_results 10.129.2.15
 
-# Save only Normal
-nmap -oN scan.txt <IP>
+# Trace Packets (See exactly what is sent/received)
+nmap --packet-trace 10.129.2.15
 
-# Convert XML to HTML Report
-xsltproc target.xml -o target.html
-```
-## Debugging
-```shell
-# Trace Packets (See what is actually sent)
-nmap --packet-trace <IP>
-
-# Show Reason (Why is a port marked closed/filtered?)
-nmap --reason <IP>
+# Reason (Why is a port marked closed/filtered?)
+nmap --reason 10.129.2.15
 ```

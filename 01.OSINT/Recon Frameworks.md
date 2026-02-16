@@ -1,72 +1,68 @@
-# Recon Frameworks
-```table-of-contents
-```
-## Tool Overview
-| `Tool`          | `Language` | `Key Features`                         | `Focus`                                    |
-| --------------- | ---------- | -------------------------------------- | ------------------------------------------ |
-| **FinalRecon**      | Python     | Modular, Fast, CLI-based.              | Web Recon (Headers, SSL, Whois, Crawling). |
-| **Recon-ng**        | Python     | Modular (Metasploit-like), DB support. | General OSINT (APIs, GeoIP, Contacts).     |
-| **theHarvester**    | Python     | Scrapes search engines & Shodan.       | Emails, Subdomains, IPs.                   |
-| **SpiderFoot**      | Python     | 100+ Data sources, Web GUI available.  | Automation, Asset Discovery.               |
-| **OSINT Framework** | Web        | Collection of tools/links.             | Resource directory (not a scanner).        |
-## FinalRecon
-### Features
-- **Header Info:** Server details, security headers.
-- **SSL Info:** Certificate validity, issuer.
-- **Whois:** Domain registration details.
-- **Crawler:** Extracts links, images, `robots.txt`, `sitemap.xml`.
-- **DNS/Subdomains:** Enumerates records and finds subdomains via APIs.
-### Installation
+# Automated Recon Frameworks
+## 1. The "Swiss Army Knife" (All-in-One)
+### FinalRecon
+**Install:** `git clone https://github.com/thewhiteh4t/FinalRecon.git && cd FinalRecon && pip3 install -r requirements.txt` 
+**Docs:** [https://github.com/thewhiteh4t/FinalRecon](https://github.com/thewhiteh4t/FinalRecon)
 ```shell
-git clone https://github.com/thewhiteh4t/FinalRecon.git
-cd FinalRecon
-pip3 install -r requirements.txt
-chmod +x ./finalrecon.py
-```
-### Usage Arguments
-| **Option**         | **Argument** | **Description**                             |
-| -------------- | -------- | --------------------------------------- |
-| `-h`, `--help` |          | Show help message.                      |
-| `--url`        | URL      | Target URL (Required).                  |
-| `--headers`    |          | Get Header Information.                 |
-| `--sslinfo`    |          | Get SSL Certificate Information.        |
-| `--whois`      |          | Perform Whois Lookup.                   |
-| `--crawl`      |          | Crawl Target (Extract links/resources). |
-| `--dns`        |          | DNS Enumeration.                        |
-| `--sub`        |          | Sub-Domain Enumeration.                 |
-| `--dir`        |          | Directory Search.                       |
-| `--wayback`    |          | Fetch Wayback Machine URLs.             |
-| `--ps`         |          | Fast Port Scan.                         |
-| `--full`       |          | Run ALL modules (Full Recon).           |
-### Examples
-```shell
-# Basic Recon (Headers + Whois)
-./finalrecon.py --headers --whois --url http://target.com
+# Description: Modular web reconnaissance tool (Headers, SSL, Whois, Crawling, DNS).
+# Syntax: python3 finalrecon.py --url <target> [flags]
 
-# Full Scan (Noisy)
-./finalrecon.py --full --url http://target.com
+# ⚠️ OPSEC: High Noise (Active Crawling & Scanning).
+# Full Scan (Headers, SSL, Whois, DNS, Subdomains, Crawl)
+python3 finalrecon.py --full --url https://target.com
 
-# Subdomain & DNS only
-./finalrecon.py --sub --dns --url http://target.com
+# Low Noise (Headers, Whois, SSL only)
+python3 finalrecon.py --headers --whois --sslinfo --url https://target.com
 ```
-## theHarvester
+### SpiderFoot (CLI)
+**Install:** `pip3 install spiderfoot` or `git clone https://github.com/smicallef/spiderfoot` 
+**Docs:** [https://github.com/smicallef/spiderfoot](https://github.com/smicallef/spiderfoot)
 ```shell
-# Basic Search (Google, Bing, LinkedIn)
-# -d: Domain | -l: Limit results | -b: Source
+# Description: Automated OSINT collection from 100+ public data sources.
+# Syntax: spiderfoot -s <target> -m <modules>
+# ⚠️ OPSEC: Variable. Passive if using APIs/Search Engines; Active if using probing modules.
+
+# Basic Scan (All modules, passive & active)
+spiderfoot -s target.com -q
+
+# List available modules
+spiderfoot -m
+```
+## 2. Email & People Hunting
+### theHarvester
+**Install:** `sudo apt install theharvester` 
+**Docs:** [https://github.com/laramies/theHarvester](https://github.com/laramies/theHarvester)
+```shell
+# Description: Scrapes search engines (Google, Bing), LinkedIn, and Shodan for emails, subdomains, and names.
+# Syntax: theHarvester -d <domain> -l <limit> -b <source>
+# ⚠️ OPSEC: Passive (Scrapes third-party sources).
+
+# Targeted Search (Google, Bing, LinkedIn)
 theHarvester -d target.com -l 500 -b google,bing,linkedin
 
-# Search all sources
+# Search All Sources (Can be slow)
 theHarvester -d target.com -l 500 -b all
 ```
-## Recon-ng
+## 3. Modular Frameworks
+### Recon-ng
+**Install:** `sudo apt install recon-ng` 
+**Docs:** [https://github.com/lanmaster53/recon-ng](https://github.com/lanmaster53/recon-ng)
+**Workflow:** Recon-ng uses a Metasploit-like interactive shell.
 ```shell
-# Start the console
+# 1. Start Framework
 recon-ng
 
-# Inside the console:
-workspaces create <PROJECT_NAME>
-modules load hacker_target
-options set SOURCE <DOMAIN>
-run
-show hosts
+# 2. Create Workspace (Isolates data per target)
+[recon-ng] > workspaces create Project_Target
+
+# 3. Install/Load Modules (e.g., HackerTarget for subdomains)
+[recon-ng] > marketplace install hackertarget
+[recon-ng] > modules load recon/domains-hosts/hackertarget
+
+# 4. Configure & Run
+[recon-ng][hackertarget] > options set SOURCE target.com
+[recon-ng][hackertarget] > run
+
+# 5. View Results
+[recon-ng][hackertarget] > show hosts
 ```
