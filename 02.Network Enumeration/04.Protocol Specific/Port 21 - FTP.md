@@ -7,6 +7,9 @@
 # Netcat Banner Grab (Fastest)
 nc -nv <IP> 21
 
+# Telnet Banner Grab
+telnet 10.129.14.136 21
+
 # Nmap - Check Version & Anonymous Login
 # ⚠️ OPSEC: Moderate Noise.
 nmap -sV -sC -p 21 <IP>

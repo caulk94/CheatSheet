@@ -4,17 +4,17 @@
 ## 1. Theory & Record Types
 **Goal:** Understand what you are looking for.
 
-|Record|Description|Pentest Utility|
-|---|---|---|
-|**A**|IPv4 Address|Target IP (Direct mapping).|
-|**AAAA**|IPv6 Address|Target IPv6 (Often bypassed by firewalls).|
-|**CNAME**|Alias|Check for **Subdomain Takeover** (pointing to dead services).|
-|**MX**|Mail Exchange|Phishing targets & Mail servers.|
-|**NS**|Name Server|The authoritative servers you should query directly.|
-|**TXT**|Text / Notes|SPF/DMARC info, Verification keys, Internal notes.|
-|**SOA**|Start of Authority|Admin email (`hostmaster@target.com`), Serial Number.|
-|**SRV**|Service Locator|Finds **Active Directory Controllers**, SIP, LDAP.|
-|**PTR**|Pointer|Reverse DNS (IP -> Hostname).|
+| **Record** | **Description**    | **Pentest Utility**                                           |
+| ---------- | ------------------ | ------------------------------------------------------------- |
+| `A`      | IPv4 Address       | Target IP (Direct mapping).                                   |
+| `AAAA`   | IPv6 Address       | Target IPv6 (Often bypassed by firewalls).                    |
+| `CNAME`  | Alias              | Check for **Subdomain Takeover** (pointing to dead services). |
+| `MX`     | Mail Exchange      | Phishing targets & Mail servers.                              |
+| `NS`     | Name Server        | The authoritative servers you should query directly.          |
+| `TXT`    | Text / Notes       | SPF/DMARC info, Verification keys, Internal notes.            |
+| `SOA`    | Start of Authority | Admin email (`hostmaster@target.com`), Serial Number.         |
+| `SRV`    | Service Locator    | Finds **Active Directory Controllers**, SIP, LDAP.            |
+| `PTR`    | Pointer            | Reverse DNS (IP -> Hostname).                                 |
 ## 2. Manual Enumeration (DIG)
 **Concept:** Always query the **Target Name Server** directly (`@<IP>`) to bypass caching and get authoritative answers.
 ### Standard Queries
@@ -28,7 +28,10 @@ dig a target.com @10.129.2.15
 # 3. Mail Servers (MX)
 dig mx target.com @10.129.2.15
 
-# 4. Version Query (Chaos Class)
+# 4. All DNS Records (ANY)
+dig any target.com @10.129.2.15
+
+# 5. Version Query (Chaos Class)
 # Often blocked, but can reveal BIND version.
 dig CH TXT version.bind @10.129.2.15
 ```
@@ -58,7 +61,7 @@ dig axfr internal.target.htb @10.129.2.15
 ### Automated AXFR (Fierce)
 **Tool:** `fierce` 
 **Description:** Perl script that locates non-contiguous IP space and hostnames via DNS.
-```
+```shell
 # Scan and attempt Zone Transfer
 fierce --domain target.htb --dns-servers 10.129.2.15
 ```
@@ -80,6 +83,22 @@ curl -s "https://crt.sh/?q=%.target.com&output=json" | jq -r '.[].name_value' | 
 ```shell
 # ⚠️ OPSEC: High Noise.
 gobuster dns -d target.htb -r 10.129.2.15 -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt
+```
+
+**Tool:** dig
+**Description:** Guesses subdomains using a wordlist. 
+```shell
+for sub in $(cat /opt/useful/SecLists/Discovery/DNS/subdomains-top1million-110000.txt);do dig $sub.inlanefreight.htb @10.129.14.128 | grep -v ';\|SOA' | sed -r '/^\s*$/d' | grep $sub | tee -a subdomains.txt;done
+```
+
+**Tool:** [DNSenum](https://github.com/fwaeytens/dnsenum) 
+```shell
+# Syntax: dnsenum --dnsserver <TARGET_DNS_IP> --enum -p 0 -s 0 -o <OUTPUT_FILE> -f <WORDLIST_PATH> <TARGET_DOMAIN>
+dnsenum --dnsserver 10.129.14.128 --enum -p 0 -s 0 -o subdomains.txt -f /opt/useful/SecLists/Discovery/DNS/subdomains-top1million-110000.txt inlanefreight.htb
+```
+### Zone Transfers
+```shell
+dig axfr @nsztm1.digi.ninja zonetransfer.me
 ```
 ### Active (Virtual Host / VHost)
 **Description:** Used when multiple domains share the same IP (Common in web hosting/CTFs). The DNS A record exists, but the web server routes based on the `Host` header. 

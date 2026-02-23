@@ -96,10 +96,29 @@ nikto -h https://10.129.2.15 -Tuning b
 **Install:** `go install github.com/jaeles-project/gospider@latest` 
 **Description:** Fast Golang spider. Extracts URLs from JS files and sitemaps. 
 **Syntax:** `gospider -s <URL> -o <Output_Dir>`
-
 ```shell
 # -c: Concurrent requests | -d: Depth
 gospider -s "https://10.129.2.15" -o output_crawl -c 10 -d 2
+```
+### Scrapy
+**Install:** `pip3 install scrapy`
+```shell
+# RUN
+scrapy crawl spider_name
+
+# OUTPUT
+scrapy crawl dapps -o data/07-07-dapps.csv
+scrapy crawl dapps -t csv -o - >"data/dapp/$DATE-dapp.csv"
+```
+### ReconSpider
+**Install:**
+```shell
+caulk@htb[/htb]$ wget -O ReconSpider.zip https://academy.hackthebox.com/storage/modules/144/ReconSpider.v1.2.zip
+caulk@htb[/htb]$ unzip ReconSpider.zip 
+```
+**Run**
+```shell
+python3 reconspider.py -t <TARGET_IP_O_DOMINIO>
 ```
 ## 6. Well-Known URIs (RFC Standards)
 **Goal:** Check these standard paths manually or via curl. They often contain contact info, policy details, or asset links.

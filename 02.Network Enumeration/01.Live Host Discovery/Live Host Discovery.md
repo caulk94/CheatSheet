@@ -14,6 +14,12 @@ sudo arp-scan -I eth0 192.168.1.0/24
 ```
 ## 2. Ping Sweeps (Layer 3 - ICMP)
 _Best for: Routed networks or initial discovery from an external position (if ICMP is allowed)._
+### nMap
+```shell
+# Syntax: namp -sn CIDR/IP/IPs | grep for | cut -d" " -f5
+
+nmap -sn 10.129.2.0/24 | grep for | cut -d" " -f5
+```
 ### fping
 **Install:** `sudo apt install fping` 
 **Docs:** [https://fping.org/](https://fping.org/)

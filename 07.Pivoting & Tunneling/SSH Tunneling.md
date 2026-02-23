@@ -80,6 +80,7 @@ sudo sshuttle -r ubuntu@10.129.202.64 172.16.5.0/24 -v
 ```
 ### Plink.exe (Windows SSH Client)
 **Use Case:** You are on a compromised Windows machine and want to create a tunnel _out_.
+**Docs:** https://www.chiark.greenend.org.uk/~sgtatham/putty/latest.html
 ```powershell
 # Create a Dynamic SOCKS proxy on the Windows host
 plink.exe -ssh -D 9050 ubuntu@10.129.15.50

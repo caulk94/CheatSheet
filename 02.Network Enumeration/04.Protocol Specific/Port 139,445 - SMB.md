@@ -16,7 +16,11 @@ smbclient -N -L //<IP>
 
 # SMBMap - Permissions Check
 # Quickly see if you have Read/Write access as 'null' user
+smbmap -H <IP>
 smbmap -H <IP> -u "null"
+
+# RPCclinet
+rpcclient -U "" 10.129.14.128
 ```
 ### NetExec (Modern Standard)
 **Tool:** `NetExec` (formerly CrackMapExec). 
@@ -35,16 +39,20 @@ nxc smb <IP> -u '' -p '' --pass-pol
 ## 2. RPC Enumeration (Deep Dive)
 **Tool:** `rpcclient` 
 **Description:** Interacts directly with the MS-RPC interface. Often reveals users/groups even if listing shares fails. 
-**Syntax:** `rpcclient -U "" -N <IP>`
+```shell
+# Syntax:
+rpcclient -U "" -N <IP>
 
-| **Command**            | **Description**                                              |
-| ------------------ | -------------------------------------------------------- |
-| `srvinfo`          | Server OS and version details.                           |
-| `enumdomusers`     | List all users in the domain.                            |
-| `enumdomgroups`    | List all groups.                                         |
-| `queryuser <RID>`  | Get detailed info on a user (RID is hex, e.g., `0x3e8`). |
-| `querygroup <RID>` | Get group membership.                                    |
-| `getdompwinfo`     | Get SMB password policy (min length, complexity).        |
+# srvinfo                          -> Server OS and version details.
+# enumdomusers                     -> List all users in the domain.
+# enumdomgroups                    -> List all groups.
+# queryuser <RID>                  -> Get detailed info on a user (RID is hex, e.g., `0x3e8`).
+# querygroup <RID>                 -> Get group membership.
+# getdompwinfo                     -> Get SMB password policy (min length, complexity).
+# querydominfo                     -> Domain Information Query
+# netshareenumall                  -> Net Share Enumeration
+# netsharegetinfo <sharename>      -> Net Share Get Information
+```
 ### RID Cycling (Manual Bash Loop)
 **Description:** If `enumdomusers` is denied, brute-force the RIDs (Resource IDs) to find users.
 ```shell
@@ -56,7 +64,12 @@ done
 ## 3. Automated Enumeration (Authenticated)
 **Condition:** You have found credentials (`guest`, `anonymous`, or valid user).
 ### Enum4Linux-ng
-**Install:** `git clone https://github.com/cddmp/enum4linux-ng` 
+**Install:**
+```shell
+git clone https://github.com/cddmp/enum4linux-ng.git
+cd enum4linux-ng
+pip3 install -r requirements.txt
+```
 **Description:** Modern wrapper. Automates RID cycling, share listing, and policy checks. 
 **Syntax:** `./enum4linux-ng.py <IP> -A`
 ```shell
@@ -65,6 +78,7 @@ done
 ./enum4linux-ng.py 10.129.14.128 -A
 ```
 ### Impacket Samrdump
+**Tool:** [samrdump.py](https://github.com/SecureAuthCorp/impacket/blob/master/examples/samrdump.py)
 **Description:** Dumps the Security Account Manager (SAM) database remotely via RPC.
 ```shell
 # Dump users and domains
@@ -78,10 +92,12 @@ impacket-samrdump <IP>
 smbclient //<IP>/<SHARE> -U <USER>
 
 # Inside SMB Prompt:
-# recurse ON  -> Turn on recursive mode
-# prompt OFF  -> Turn off confirmation for mget
-# mget * -> Download everything
-# put file    -> Upload file
+# recurse ON      -> Turn on recursive mode
+# prompt OFF      -> Turn off confirmation for mget
+# mget *          -> Download everything
+# get <file_name> -> Download file
+# put file        -> Upload file
+# !ls             -> Run command on kali
 ```
 ### Mounting (Linux)
 **Description:** Mount the share to use standard Linux tools (`grep`, `find`).

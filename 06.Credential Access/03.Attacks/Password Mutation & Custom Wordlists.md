@@ -8,6 +8,8 @@
 # Basic Usage
 cewl https://www.inlanefreight.com -w wordlist.txt
 
+cewl http://mysite.com/wordpress/index.php/languages-and-frameworks > passwords.txt
+
 # Advanced Usage
 # -d 4: Depth (How many links deep to crawl)
 # -m 6: Min word length (Ignore "the", "and", etc.)

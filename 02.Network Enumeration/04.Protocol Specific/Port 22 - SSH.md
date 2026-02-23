@@ -10,13 +10,15 @@
 nc -nv 10.129.2.15 22
 ```
 ### SSH Audit (Configuration Analysis)
-**Install:** `pip3 install ssh-audit` 
+**Install:** `pip3 install ssh-audit` or `git clone https://github.com/jtesta/ssh-audit.git && cd ssh-audit`
 **Docs:** [https://github.com/jtesta/ssh-audit](https://github.com/jtesta/ssh-audit)
 ```shell
 # Description: Detailed analysis of supported algorithms, keys, and known vulnerabilities.
 # Syntax: ssh-audit <IP>
 # ⚠️ OPSEC: Low Noise. Standard handshake analysis.
 ssh-audit 10.129.2.15
+#OR
+./ssh-audit.py 10.129.14.132
 ```
 ## 2. Authentication & Connection
 **Goal:** Gain access using credentials or keys.

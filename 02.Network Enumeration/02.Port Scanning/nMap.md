@@ -62,6 +62,8 @@ sudo nmap -Pn -n 10.129.2.15
 ```shell
 # Scans subnet and saves only the IPs that responded to a file.
 sudo nmap 10.129.2.0/24 -sn -oG - | awk '/Up$/{print $2}' > alive_hosts.txt
+#OR
+nmap -sn 10.129.2.0/24 | grep for | cut -d" " -f5
 ```
 ## 3. Scan Techniques
 ### TCP Scanning
