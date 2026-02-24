@@ -19,6 +19,10 @@ Find-InterestingDomainAcl
 $sid = Convert-NameToSid wley
 Get-DomainObjectACL -Identity * -ResolveGUIDs | ? {$_.SecurityIdentifier -eq $sid}
 ```
+#### [SharpUp](https://github.com/GhostPack/SharpUp/)
+```powershell
+.\SharpUp.exe audit
+```
 ### Mapping GUIDs (What does the right mean?)
 If you see a raw GUID (e.g., `0029...`), you can look up what permission it represents (e.g., "Reset Password").
 ```powershell
