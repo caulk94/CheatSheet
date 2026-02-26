@@ -20,7 +20,10 @@ curl -I -v -k -L http://10.129.2.15
 **Syntax:** `whatweb -a 3 <TARGET>`
 
 ```shell
-# -a 3: Aggressive scan (Requests valid pages to trigger 404s/cookies)
+# Aggression LEVEL	
+# 1. Stealthy
+# 3. Aggressive
+# 4. Heavy
 whatweb -a 3 https://10.129.2.15
 ```
 ## 2. WAF Detection
@@ -49,9 +52,11 @@ nmap -p 80,443 --script http-waf-detect --script-args="http-waf-detect.aggro" 10
 - `-k`: Skip SSL verification.
 - `-t`: Threads (Default 10). Increase for speed, decrease for stealth.
 - `-x`: Append extensions (e.g., searches for `admin`, `admin.php`, `admin.txt`).
+- `--exclude-length <LENGHT>`:  exclude response with specific lenght.
 
 ```shell
 # ⚠️ OPSEC: High Noise. Generates 404 logs.
+# Wordlist: /usr/share/seclists/Discovery/Web-Content/raft-large-words-lowercase.txt
 gobuster dir -u https://10.129.2.15 -k -w /usr/share/wordlists/seclists/Discovery/Web-Content/raft-small-words.txt -x php,txt,html,sh,bak,zip
 ```
 ### Feroxbuster (Recursive & Smart)
@@ -64,6 +69,38 @@ gobuster dir -u https://10.129.2.15 -k -w /usr/share/wordlists/seclists/Discover
 # -n: No recursion (if you want to be faster/quieter)
 # -k: Insecure SSL
 feroxbuster -u https://10.129.2.15 -k -w /usr/share/wordlists/seclists/Discovery/Web-Content/raft-medium-directories.txt
+```
+### .ds_store file
+If we find a `.DS_Store` file, we can try to enumerate directories.
+#### DS_Walk
+**Install:** `git clone https://github.com/Keramas/DS_Walk `
+```shell
+# Syntax: python ds_walk.py -u <URL/IP>
+python ds_walk.py -u http://10.13.38.11
+```
+### IIS Name Enumeration
+If we encounter an IIS web server directory, such as `http://10.13.38.11/dev/304c0c90fbc6520610abbf378e2339d1/db`, we can test if the short name feature is enabled to discover hidden files.
+#### iis_shortname_scan.py
+**Install:** `git clone https://github.com/Keramas/DS_Walk `
+
+**Scanning for Short Names**
+We can use `iis_shortname_scan` to reveal the first 6 characters of hidden files:
+```shell
+python3 iis_shortname_scan.py http://10.13.38.11/dev/dca66d38fd916317687e1390a420c3fc/db
+
+<SNIP>
+File: /dev/dca66d38fd916317687e1390a420c3fc/db/poo_co~1.txt*
+<SNIP>
+```
+
+**Brute-forcing the Full Name**
+The output `poo_co~1.txt` indicates that the actual file name starts with `poo_co` and ends with a `.txt` extension (or similar). To find the full name efficiently, we can filter our wordlist for words starting with `co` and fuzz the remaining part of the name:
+```shell
+# Create a custom wordlist with words starting with "co"
+grep "^co" /usr/share/seclists/Discovery/Web-Content/raft-large-words-lowercase.txt > co_wordlist.txt 
+
+# Fuzz the rest of the filename
+wfuzz -c -w co_wordlist.txt -u http://10.13.38.11/dev/304c0c90fbc6520610abbf378e2339d1/db/poo_FUZZ.txt --hc 404
 ```
 ## 4. Vulnerability Scanning
 **Goal:** Automated detection of CVEs and misconfigurations.
