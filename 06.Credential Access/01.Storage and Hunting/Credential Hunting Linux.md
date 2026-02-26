@@ -27,6 +27,8 @@ env | grep -iE "pass|key|secret|token"
 # Search specific extensions for "user/pass" keywords
 # 2>/dev/null hides "Permission Denied" errors
 grep -rnE "user|password|pass" . --include=*.{conf,config,xml,ini,json,yaml} 2>/dev/null | grep -v "lib\|fonts\|share\|core"
+
+cat wp-config.php | grep 'DB_USER\|DB_PASSWORD'
 ```
 ### Scripts & Source Code
 **Context:** Developers hardcode credentials in automation scripts (`.py`, `.sh`, `.pl`).

@@ -76,11 +76,7 @@ SELECT * FROM information_schema.tables;
 
 -- 4. Check for Impersonation Candidates
 -- Finds users you can "become" (PrivEsc)
-SELECT distinct b.name
-FROM sys.server_permissions a
-INNER JOIN sys.server_principals b
-ON a.grantor_principal_id = b.principal_id
-WHERE a.permission_name = 'IMPERSONATE';
+SELECT distinct b.name FROM sys.server_permissions a INNER JOIN sys.server_principals b ON a.grantor_principal_id = b.principal_id WHERE a.permission_name = 'IMPERSONATE';
 ```
 ## 4. Attack: Remote Code Execution (RCE)
 **Goal:** Execute OS commands on the server.
