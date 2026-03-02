@@ -36,6 +36,11 @@ nxc smb <IP> -u '' -p '' --shares
 # Enumerate Password Policy (Critical for Brute Force safety)
 nxc smb <IP> -u '' -p '' --pass-pol
 ```
+### SMBClient
+Anonymous login to specific share
+```shell
+smbclient //172.16.1.10/SlackMigration -U anonymous%anonymous -c 'recurse;ls'
+```
 ## 2. RPC Enumeration (Deep Dive)
 **Tool:** `rpcclient` 
 **Description:** Interacts directly with the MS-RPC interface. Often reveals users/groups even if listing shares fails. 

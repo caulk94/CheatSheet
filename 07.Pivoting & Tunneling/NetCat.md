@@ -24,6 +24,9 @@ sudo nc -u -lvnp 4444
 ```shell
 # Connect to a target
 nc -nv <TARGET_IP> <PORT>
+
+# In the case of IoT devices, routers, Docker containers, and Android systems, we can use BusyBox
+busybox nc -nv <TARGET_IP> <PORT>
 ```
 ## 2. Reverse & Bind Shells
 **Crucial Distinction:**

@@ -17,8 +17,9 @@ _Best for: Routed networks or initial discovery from an external position (if IC
 ### nMap
 ```shell
 # Syntax: namp -sn CIDR/IP/IPs | grep for | cut -d" " -f5
-
 nmap -sn 10.129.2.0/24 | grep for | cut -d" " -f5
+
+nmap -n -Pn --top-ports=10 --open -T4 10.10.110.0/24 | grep "Nmap scan report for" | cut -d " " -f 5
 ```
 ### fping
 **Install:** `sudo apt install fping` 
@@ -38,7 +39,5 @@ fping -a -g 10.129.2.0/24 2>/dev/null > live_hosts.txt
 # Syntax: for i in $(seq 1 254); do ping -c 1 -W 1 <network>.$i ...; done
 # ⚠️ OPSEC: Low/Moderate Noise. Slow and sequential.
 
-for i in $(seq 1 254); do 
-    ping -c 1 -W 1 172.16.1.$i >/dev/null && echo "172.16.1.$i UP"
-done
+for i in $(seq 1 255); do ping -c 1 -W 1 172.16.1.$i >/dev/null && echo "172.16.1.$i UP"; done
 ```

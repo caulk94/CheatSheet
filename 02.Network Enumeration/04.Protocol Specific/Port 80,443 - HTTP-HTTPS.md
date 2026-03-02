@@ -53,6 +53,7 @@ nmap -p 80,443 --script http-waf-detect --script-args="http-waf-detect.aggro" 10
 - `-t`: Threads (Default 10). Increase for speed, decrease for stealth.
 - `-x`: Append extensions (e.g., searches for `admin`, `admin.php`, `admin.txt`).
 - `--exclude-length <LENGHT>`:  exclude response with specific lenght.
+- `--proxy <PROTOCOL://IP:PORT>`: proxy
 
 ```shell
 # ⚠️ OPSEC: High Noise. Generates 404 logs.

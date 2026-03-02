@@ -136,3 +136,12 @@ nmap --packet-trace 10.129.2.15
 # Reason (Why is a port marked closed/filtered?)
 nmap --reason 10.129.2.15
 ```
+## 7. Other
+### Create a list of the top _n_ Nmap ports
+```shell
+grep "/tcp" /usr/share/nmap/nmap-services | sort -r -k3 | head -n 100 | awk '{print $2}' | cut -d'/' -f1 > top100portsNMAP.txt;
+```
+Run scan:
+```shell
+for ip in $(cat ips.txt); do echo "--- $ip ---"; for port in $(cat top100portsNMAP.txt | tr ' ' '\n'); do proxychains -q nc -zv -w 1 $ip $port 2>&1 | grep -q "open" && echo "[+] $ip:$port OPEN"; sleep 0.2; done; echo ""; done
+```

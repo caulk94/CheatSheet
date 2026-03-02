@@ -68,6 +68,9 @@ bloodhound
 ```shell
 # Syntax: bloodhound-python -d <DOMAIN> -u <USER> -p <PASS> -c All -ns <DC_IP>
 bloodhound-python -d inlanefreight.local -u avazquez -p Password123 -c All -ns 172.16.5.5
+
+# Proxy
+proxychains -q bloodhound-python -d DANTE.ADMIN -u jbercov -p myspace7 -c All -ns 172.16.2.5 --dns-tcp
 ```
 ## 3. Analysis (The Attack Graph)
 **Import:** Drag and drop the `.zip` file into the BloodHound GUI.

